@@ -1,0 +1,249 @@
+#include "SQLStatement.hpp"
+#include "Tokenizer.hpp"
+#include "Entity.hpp"
+#include "Helpers.hpp"
+
+namespace ECE141
+{
+  SQLStatement::SQLStatement(SQLProcessor &aSQLProcessor, Keywords aStmtType) : Statement(aStmtType), theSQLProcessor(&aSQLProcessor){}
+
+  SQLStatement::~SQLStatement(){}
+
+  CreateStatement::CreateStatement(SQLProcessor &aSQLProcessor) : 
+  SQLStatement(aSQLProcessor, Keywords::create_kw) {}
+
+  CreateStatement::~CreateStatement(){}
+
+  StatusResult CreateStatement::parse(Tokenizer &aTokenizer){
+    Token &theToken = aTokenizer.peek(1);
+    if (theToken.keyword == Keywords::table_kw){
+      theToken = aTokenizer.peek(2);
+      if (theToken.type == TokenType::identifier){
+        aTokenizer.next(3);
+        thetableName = theToken.data;
+        if (aTokenizer.skipIf('(')){
+          StatusResult theResult = parseAttributes(aTokenizer);
+          if (theResult){
+            Entity *theEntity = new Entity(thetableName);
+            for (auto attribute : attributes){
+              theEntity->addAttribute(attribute);
+            }
+            theSQLProcessor->setEntity(theEntity);
+            return theResult;
+          }
+        }
+      }
+    }
+    return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult  CreateStatement::parseAttributes(Tokenizer &aTokenizer){
+    StatusResult theResult{Errors::noError};
+    while (theResult && aTokenizer.more()){
+      Token &theToken = aTokenizer.current();
+      if (theToken.type == TokenType::identifier){
+        Attribute theAttribute(theToken.data, DataTypes::no_type);
+        aTokenizer.next();
+        theResult = parseAttribute(aTokenizer, theAttribute);
+      }
+      else if (aTokenizer.skipIf(')')){
+        aTokenizer.next();
+        return StatusResult{Errors::noError};
+      }
+      else {
+        theResult = StatusResult{Errors::syntaxError};
+      }
+    }
+    return StatusResult{Errors::unknownCommand};
+  };
+
+  StatusResult  CreateStatement::parseAttribute(Tokenizer &aTokenizer, Attribute &anAttribute){
+    StatusResult theResult{Errors::noError};
+    if (aTokenizer.more()){
+      Token &theToken = aTokenizer.current();
+      if (Helpers::isDatatype(theToken.keyword)){
+        anAttribute.setDataType(Helpers::KeywordToDatatypes(theToken.keyword));
+        aTokenizer.next();
+        if (anAttribute.getType() == DataTypes::varchar_type){
+          theResult = getVarSize(aTokenizer, anAttribute);
+        }
+        if (theResult){
+          theResult = parseOptions(aTokenizer, anAttribute);
+          if (theResult){
+            attributes.push_back(anAttribute);
+            return theResult;
+          }
+          else{
+            return StatusResult{Errors::syntaxError};
+          }
+        }
+      }
+    }
+    return StatusResult{Errors::unknownType};
+  }
+
+  StatusResult  CreateStatement::parseOptions(Tokenizer &aTokenizer, Attribute &anAttribute){
+    StatusResult theResult{Errors::noError};
+    while (theResult && aTokenizer.more()){
+      Token &theToken = aTokenizer.current();
+      if (theToken.type==TokenType::keyword){
+        switch (theToken.keyword)
+        {
+        case Keywords::primary_kw:
+          aTokenizer.next();
+          theToken = aTokenizer.current();
+          if (theToken.keyword == Keywords::key_kw) {
+            anAttribute.setPrimaryKey(true);
+          }
+          else {
+            theResult = StatusResult{ Errors::keywordExpected };
+            return theResult;
+          }
+          break;
+        case Keywords::auto_increment_kw:
+          anAttribute.setAutoIncrement(true);
+          break;
+        case Keywords::not_kw:
+          {
+            aTokenizer.next();
+            theToken = aTokenizer.current();
+            if (theToken.keyword == Keywords::null_kw){
+              anAttribute.setNullable(false);
+            }
+            else {
+              theResult = StatusResult{Errors::syntaxError};
+              return theResult;
+            }
+          }
+          break;
+        case Keywords::default_kw:
+          {
+            anAttribute.setDefault(true);
+            if (aTokenizer.more()){
+              aTokenizer.next();
+              theToken = aTokenizer.current();
+              // anAttribute.setDefaultValue(theToken.data);
+              switch (anAttribute.getType())
+              {
+              case DataTypes::bool_type:
+                anAttribute.setDefaultValue(aTokenizer.current().keyword == Keywords::true_kw);
+                break;
+              case DataTypes::datetime_type:
+                anAttribute.setDefaultValue(Helpers::getCurrentTime());
+                break;
+              case DataTypes::float_type:
+                anAttribute.setDefaultValue(std::stod(aTokenizer.current().data));
+                break;
+              case DataTypes::int_type:
+                anAttribute.setDefaultValue(std::stoi(aTokenizer.current().data));
+                break;
+              case DataTypes::varchar_type:
+                anAttribute.setDefaultValue(aTokenizer.current().data.substr(0, anAttribute.getSize()));
+                break;
+              default:
+                break;
+              }
+
+            }
+            else {
+              theResult = StatusResult{Errors::syntaxError};
+              return theResult;
+            }
+          }
+          break;
+        
+        default:
+          break;
+        }
+        aTokenizer.next();
+      }
+      else if (theToken.data[0]==','){
+        aTokenizer.next();
+        return theResult;
+      }
+      else if (theToken.data[0]==')'){
+        return theResult;
+      }
+      else{
+        theResult = StatusResult{Errors::syntaxError};
+        return theResult;
+      }
+    }
+    return theResult;
+  }
+
+  StatusResult CreateStatement::getVarSize(Tokenizer &aTokenizer, Attribute &anAttribute){
+    Token &theToken = aTokenizer.current();
+    if (theToken.data[0] == '('){
+      aTokenizer.next();
+      theToken = aTokenizer.current();
+      if (theToken.type == TokenType::number){
+        anAttribute.setSize(atoi(theToken.data.c_str()));
+        aTokenizer.next();
+        if (aTokenizer.skipIf(')')){
+          return StatusResult{Errors::noError};
+        }
+      }
+    }
+    return StatusResult{Errors::syntaxError};
+  };
+
+  StatusResult CreateStatement::run(std::ostream &aStream) const {
+    return StatusResult{Errors::noError};
+  };
+  
+  ShowStatement::ShowStatement(SQLProcessor &aSQLProcessor) : 
+    SQLStatement(aSQLProcessor, Keywords::show_kw) {}
+
+  StatusResult ShowStatement::parse(Tokenizer &aTokenizer){
+    Token &theToken = aTokenizer.peek(1);
+    if (theToken.keyword == Keywords::tables_kw){
+      aTokenizer.next(2);
+      return StatusResult{Errors::noError};
+    }
+    return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult ShowStatement::run(std::ostream &aStream) const {
+    return StatusResult{Errors::noError};
+  };
+
+  DescribeStatement::DescribeStatement(SQLProcessor &aSQLProcessor) : 
+    SQLStatement(aSQLProcessor, Keywords::describe_kw) {}
+
+  StatusResult DescribeStatement::parse(Tokenizer &aTokenizer){
+    Token &theToken = aTokenizer.peek(1);
+    if (theToken.type == TokenType::identifier){
+      thetableName = theToken.data;
+      aTokenizer.next(2);
+      return StatusResult{Errors::noError};
+    }
+    return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult DescribeStatement::run(std::ostream &aStream) const {
+    return StatusResult{Errors::noError};
+  };
+
+  DropStatement::DropStatement(SQLProcessor &aSQLProcessor) : 
+    SQLStatement(aSQLProcessor, Keywords::drop_kw) {}
+
+  StatusResult DropStatement::parse(Tokenizer &aTokenizer){
+    Token &theToken = aTokenizer.peek(1);
+    if (theToken.keyword == Keywords::table_kw){
+      theToken = aTokenizer.peek(2);
+      if (theToken.type == TokenType::identifier){
+        thetableName = theToken.data;
+        aTokenizer.next(3);
+        return StatusResult{Errors::noError};
+      }
+    }
+    return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult DropStatement::run(std::ostream &aStream) const {
+    return StatusResult{Errors::noError};
+  };
+
+
+} // namespace ECE141
