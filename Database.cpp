@@ -98,13 +98,13 @@ namespace ECE141 {
   StatusResult Database::showTables(std::ostream &anOutput){
     Timer theTimer;
 
-    anOutput << "+----------------------+" << std::endl;
-    anOutput << "| Tables_in_" << std::setw(10) << std::left << name << " |" << std::endl;
-    anOutput << "+----------------------+" << std::endl;
+    std::cout << "+----------------------+" << std::endl;
+    std::cout << "| Tables_in_" << std::setw(10) << std::left << name << " |" << std::endl;
+    std::cout << "+----------------------+" << std::endl;
     for (auto& cur : theTableIndexes) {
-      anOutput << "| " << std::setw(20) << std::left << cur.first <<  " |" << std::endl;
+      std::cout << "| " << std::setw(20) << std::left << cur.first <<  " |" << std::endl;
     }
-    anOutput << "+----------------------+" << std::endl;
+    std::cout << "+----------------------+" << std::endl;
     anOutput << theTableIndexes.size() <<" rows in set ("<< theTimer.elapsed() << " sec.)" << std::endl;
     stream.close();
     return StatusResult{noError};
@@ -114,9 +114,9 @@ namespace ECE141 {
     Timer theTimer;
     for (auto &theEntity : theEntityList) {
       if (theEntity.getName() == aName) {
-        anOutput << "+-----------+--------------+------+-----+---------+-----------------------------+" << std::endl;
-        anOutput << "| Field     | Type         | Null | Key | Default | Extra                       |" << std::endl;
-        anOutput << "+-----------+--------------+------+-----+---------+-----------------------------+" << std::endl;
+        std::cout << "+----------------+--------------+------+-----+---------+-----------------------------+" << std::endl;
+        std::cout << "| Field          | Type         | Null | Key | Default | Extra                       |" << std::endl;
+        std::cout << "+----------------+--------------+------+-----+---------+-----------------------------+" << std::endl;
         Helpers aHelper;
         for (auto attribute : theEntity.getAttributes()) {
           std::string theType = aHelper.dataTypeToString(attribute.getType());
@@ -126,35 +126,35 @@ namespace ECE141 {
             theType.append(")");
           }
 
-          anOutput << "| " << std::setw(10) << std::left << attribute.getName() << "| " 
+          std::cout << "| " << std::setw(15) << std::left << attribute.getName() << "| " 
                    << std::setw(13) << std::left << theType << "| ";
           if (attribute.isNullable()) {
-            anOutput << std::setw(5) << std::left << "YES" << "| ";
+            std::cout << std::setw(5) << std::left << "YES" << "| ";
           } 
           else {
-            anOutput << std::setw(5) << std::left << "NO" << "| ";
+            std::cout << std::setw(5) << std::left << "NO" << "| ";
           }
 
           if (attribute.isPrimaryKey()) {
-            anOutput << std::setw(4) << std::left << "YES" << "| ";
+            std::cout << std::setw(4) << std::left << "YES" << "| ";
           } 
           else {
-            anOutput << std::setw(4) << std::left << "" << "| ";
+            std::cout << std::setw(4) << std::left << "" << "| ";
           }
 
-          anOutput << std::setw(8) << std::left;
+          std::cout << std::setw(8) << std::left;
           if (attribute.hasDefault()) {
-            anOutput << attribute.DValuetoString() << "| ";
+            std::cout << attribute.DValuetoString() << "| ";
           } 
           else {
-            anOutput << "NULL" << "| ";
+            std::cout << "NULL" << "| ";
           }
 
-          anOutput << std::setw(28) << std::left << "" << "|" ;
-          anOutput << std::endl;
+          std::cout << std::setw(28) << std::left << "" << "|" ;
+          std::cout << std::endl;
         }
-        anOutput << "+-----------+--------------+------+-----+---------+-----------------------------+" << std::endl;
-        anOutput << theEntity.getAttributes().size() << " rows in set ("<< theTimer.elapsed() << " sec.)" << std::endl;
+        std::cout << "+----------------+--------------+------+-----+---------+-----------------------------+" << std::endl;
+        anOutput << theEntity.getAttributes().size() << " rows in set ("<< theTimer.elapsed() << " sec)" << std::endl;
         return StatusResult{noError};
       }
     }
@@ -192,23 +192,23 @@ namespace ECE141 {
     }
   }
 
-  StatusResult Database::encode(std::ostream &anOutput) {
-    anOutput << name << ' ';
+  StatusResult Database::encode(std::ostream &aWriter) {
+    aWriter << name << ' ';
     for (auto& cur : theTableIndexes) {
-      anOutput << cur.first << ' ' << cur.second << ' ';
+      aWriter << cur.first << ' ' << cur.second << ' ';
     }
-    anOutput << "# ";
+    aWriter << "# ";
     return StatusResult{Errors::noError};
   }
 
-  StatusResult Database::decode(std::istream &anInput) {
-    anInput >> name;
+  StatusResult Database::decode(std::istream &aReader) {
+    aReader >> name;
     std::string temp;
-    while (anInput >> temp) {
+    while (aReader >> temp) {
       if (temp == "#")
           break;
       std::string theName = temp;
-      anInput >> temp;
+      aReader >> temp;
       uint32_t theBlockNum = std::stoul(temp);
       theTableIndexes[theName] = theBlockNum;
     }

@@ -12,32 +12,46 @@
 #include "BasicTypes.hpp"
 #include "keywords.hpp"
 #include <algorithm>
+#include <ctime>
 
 namespace ECE141 {
 
   template<typename T, size_t aSize>
   bool in_array(T (&anArray)[aSize], const T &aValue) {
-    return std::find(std::begin(anArray), std::end(anArray), aValue);
+    for(size_t i=0;i<aSize;i++) {
+      if(anArray[i]==aValue) return true;
+    }
+    return false;
+  }
+
+
+  static std::map<std::string, Operators> gExpressionOps = {
+    {"=",   Operators::equal_op},
+    {"<",   Operators::lt_op},
+    {"<=",  Operators::lte_op},
+    {">",   Operators::gt_op},
+    {">=",  Operators::gte_op},
+    {"!=",  Operators::notequal_op},
+    {"not", Operators::notequal_op},
   };
-  
 
   static std::map<std::string, Operators> gOperators = {
-    std::make_pair(".", Operators::dot_op),
-    std::make_pair("+", Operators::add_op),
-    std::make_pair("-", Operators::subtract_op),
-    std::make_pair("*", Operators::multiply_op),
-    std::make_pair("/", Operators::divide_op),
-    std::make_pair("^", Operators::power_op),
-    std::make_pair("%", Operators::mod_op),
-    std::make_pair("=", Operators::equal_op),
-    std::make_pair("!=", Operators::notequal_op),
+    std::make_pair(".",   Operators::dot_op),
+    std::make_pair("+",   Operators::add_op),
+    std::make_pair("-",   Operators::subtract_op),
+    std::make_pair("*",   Operators::multiply_op),
+    std::make_pair("/",   Operators::divide_op),
+    std::make_pair("^",   Operators::power_op),
+    std::make_pair("%",   Operators::mod_op),
+    std::make_pair("=",   Operators::equal_op),
+    std::make_pair("!=",  Operators::notequal_op),
     std::make_pair("not", Operators::notequal_op),
-    std::make_pair("<", Operators::lt_op),
-    std::make_pair("<=", Operators::lte_op),
-    std::make_pair(">", Operators::gt_op),
-    std::make_pair(">=", Operators::gte_op),
+    std::make_pair("<",   Operators::lt_op),
+    std::make_pair("<=",  Operators::lte_op),
+    std::make_pair(">",   Operators::gt_op),
+    std::make_pair(">=",  Operators::gte_op),
     std::make_pair("and", Operators::and_op),
-    std::make_pair("or", Operators::or_op),
+    std::make_pair("or",  Operators::or_op),
     std::make_pair("nor", Operators::nor_op),
     std::make_pair("between", Operators::between_op),
   };
@@ -69,6 +83,8 @@ namespace ECE141 {
     std::make_pair("between",   ECE141::Keywords::between_kw),
     std::make_pair("boolean",   ECE141::Keywords::boolean_kw),
     std::make_pair("by",        ECE141::Keywords::by_kw),
+    std::make_pair("change",    ECE141::Keywords::change_kw),
+    std::make_pair("changed",    ECE141::Keywords::changed_kw),
     std::make_pair("char",      ECE141::Keywords::char_kw),
     std::make_pair("column",    ECE141::Keywords::column_kw),
     std::make_pair("count",     ECE141::Keywords::count_kw),
@@ -81,6 +97,7 @@ namespace ECE141 {
     std::make_pair("databases", ECE141::Keywords::databases_kw),
     std::make_pair("datetime",  ECE141::Keywords::datetime_kw),
     std::make_pair("decimal",   ECE141::Keywords::decimal_kw),
+    std::make_pair("desc",      ECE141::Keywords::desc_kw),
     std::make_pair("delete",    ECE141::Keywords::delete_kw),
     std::make_pair("describe",  ECE141::Keywords::describe_kw),
     std::make_pair("distinct",  ECE141::Keywords::distinct_kw),
@@ -96,6 +113,8 @@ namespace ECE141 {
     std::make_pair("group",     ECE141::Keywords::group_kw),
     std::make_pair("help",      ECE141::Keywords::help_kw),
     std::make_pair("in",        ECE141::Keywords::in_kw),
+    std::make_pair("index",     ECE141::Keywords::index_kw),
+    std::make_pair("indexes",   ECE141::Keywords::indexes_kw),
     std::make_pair("inner",     ECE141::Keywords::inner_kw),
     std::make_pair("insert",    ECE141::Keywords::insert_kw),
     std::make_pair("int",       ECE141::Keywords::integer_kw),
@@ -117,9 +136,11 @@ namespace ECE141 {
     std::make_pair("order",     ECE141::Keywords::order_kw),
     std::make_pair("outer",     ECE141::Keywords::outer_kw),
     std::make_pair("primary",   ECE141::Keywords::primary_kw),
+    std::make_pair("query",     ECE141::Keywords::query_kw),
     std::make_pair("quit",      ECE141::Keywords::quit_kw),
     std::make_pair("references", ECE141::Keywords::references_kw),
     std::make_pair("right",     ECE141::Keywords::right_kw),
+    std::make_pair("rows",      ECE141::Keywords::rows_kw),
     std::make_pair("select",    ECE141::Keywords::select_kw),
     std::make_pair("self",      ECE141::Keywords::self_kw),
     std::make_pair("set",       ECE141::Keywords::set_kw),
@@ -139,11 +160,29 @@ namespace ECE141 {
     std::make_pair("default",     ECE141::Keywords::default_kw),
     std::make_pair("timestamp",     ECE141::Keywords::timestamp_kw),
   };
+
+  static std::map<Keywords, DataTypes> gKeywordTypes = {
+    std::make_pair(Keywords::boolean_kw, DataTypes::bool_type),
+    std::make_pair(Keywords::datetime_kw, DataTypes::datetime_type),
+    std::make_pair(Keywords::float_kw, DataTypes::float_type),
+    std::make_pair(Keywords::integer_kw, DataTypes::int_type),
+    std::make_pair(Keywords::varchar_kw, DataTypes::varchar_type)
+  };
   
   
   class Helpers {
   public:
-    
+        
+    //be very careful about collisions!
+    static size_t hashString(const char *str) {
+      uint32_t h{0};
+      unsigned char *p;
+      const int gMultiplier = 37;
+      for (p = (unsigned char*)str; *p != '\0'; p++)
+        h = gMultiplier * h + *p;
+      return h;
+    }
+
     static Keywords getKeywordId(const std::string aKeyword) {
       auto theIter = gDictionary.find(aKeyword);
       if (theIter != gDictionary.end()) {
@@ -177,12 +216,21 @@ namespace ECE141 {
     
     static const char* keywordToString(Keywords aType) {
       switch(aType) {
-        case Keywords::integer_kw:  return "integer";
-        case Keywords::float_kw:    return "float";
-        case Keywords::boolean_kw:  return "bool";
-        case Keywords::datetime_kw: return "datetime";
-        case Keywords::varchar_kw:  return "varchar";
-        default:                    return "unknown";
+        case Keywords::boolean_kw:    return "bool";
+        case Keywords::create_kw:     return "create";
+        case Keywords::database_kw:   return "database";
+        case Keywords::databases_kw:  return "databases";
+        case Keywords::datetime_kw:   return "datetime";
+        case Keywords::describe_kw:   return "describe";
+        case Keywords::drop_kw:       return "drop";
+        case Keywords::float_kw:      return "float";
+        case Keywords::integer_kw:    return "integer";
+        case Keywords::show_kw:       return "show";
+        case Keywords::table_kw:      return "table";
+        case Keywords::tables_kw:     return "tables";
+        case Keywords::use_kw:        return "use";
+        case Keywords::varchar_kw:    return "varchar";
+        default:                      return "unknown";
       }
     }
   
@@ -199,6 +247,11 @@ namespace ECE141 {
           return true;
         default: return false;
       }
+    }
+        
+    static DataTypes getTypeForKeyword(Keywords aKeyword) {
+      return gKeywordTypes.count(aKeyword)
+        ? gKeywordTypes[aKeyword] : DataTypes::no_type;
     }
 
     static DataTypes KeywordToDatatypes(Keywords aKeyword) {
@@ -261,7 +314,6 @@ namespace ECE141 {
 
       return res;
     }
-
   };
   
   

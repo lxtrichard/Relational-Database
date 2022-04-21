@@ -32,8 +32,8 @@ namespace ECE141 {
     StatusResult    describeTable(std::ostream &anOutput, const std::string &aName);
     StatusResult    dropTable(std::ostream &anOutput, const std::string &aName);
 
-    StatusResult    encode(std::ostream &anOutput) override;
-    StatusResult    decode(std::istream &anInput) override;
+    StatusResult    encode(std::ostream &aWriter) override;
+    StatusResult    decode(std::istream &aReader) override;
 
   protected:
     

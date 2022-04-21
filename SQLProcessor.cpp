@@ -43,6 +43,7 @@ namespace ECE141 {
     case Keywords::show_kw: theStatement = new ShowStatement(*this); break;
     case Keywords::describe_kw: theStatement = new DescribeStatement(*this); break;
     case Keywords::drop_kw: theStatement = new DropStatement(*this); break;
+    case Keywords::insert_kw: return nullptr;
     default: break;
     }
     if (theStatement) {

@@ -1,6 +1,6 @@
 CXX=g++
 CXXFLAGS=-g -std=c++17 -Wall -pedantic
-BIN=pa3
+BIN=pa4
 
 SRC=$(wildcard *.cpp)
 OBJ=$(SRC:%.cpp=%.o)

@@ -3,27 +3,17 @@
     {
       "name": "Compile test",
       "setup": "make",
-      "run": "./pa3 Compile",
+      "run": "./pa4 Compile",
       "input": "",
       "output": "Compile test PASS",
       "comparison": "included",
       "timeout": 5,
-      "points": 5
+      "points": 10
     },
     {
-      "name": "App test",
+      "name": "DBCommands",
       "setup": "make",
-      "run": "./pa3 App",
-      "input": "",
-      "output": "App test PASS",
-      "comparison": "included",
-      "timeout": 5,
-      "points": 5
-    },
-    {
-      "name": "DB Test",
-      "setup": "make",
-      "run": "./pa3 DBCommands",
+      "run": "./pa4 DBCommands",
       "input": "",
       "output": "DBCommands test PASS",
       "comparison": "included",
@@ -31,24 +21,24 @@
       "points": 10
     },
     {
-      "name": "Reader test",
-      "setup": "make",
-      "run": "./pa3 Reader",
-      "input": "",
-      "output": "Reader test PASS",
-      "comparison": "included",
-      "timeout": 5,
-      "points": 10
-    },
-    {
       "name": "Tables test",
       "setup": "make",
-      "run": "./pa3 Tables",
+      "run": "./pa4 Tables",
       "input": "",
       "output": "Tables test PASS",
       "comparison": "included",
+      "timeout": 5,
+      "points": 40
+    },
+    {
+      "name": "Insert test",
+      "setup": "make",
+      "run": "./pa4 Insert",
+      "input": "",
+      "output": "Insert test PASS",
+      "comparison": "included",
       "timeout": 10,
-      "points": 70
+      "points": 40
     }
   ]
 }

@@ -16,6 +16,8 @@
 #include "Errors.hpp"
 #include "Config.hpp"
 #include "FolderReader.hpp"
+#include "TestSequencer.hpp"
+#include "Faked.hpp"
 
 void showErrors(ECE141::StatusResult &aResult, std::ostream &anOutput) {
   
@@ -65,6 +67,48 @@ namespace ECE141 {
       << theMessage << "\n";
   }
 
+  enum Commands {unknown, alter, createDB, createTable, describe,
+    delet, dropDB, dropTable, dumpDB, insert, select, showDBs, showTables,
+    update, useDB};
+
+  struct CommandCount {
+    Commands  command;
+    int       count;
+    char      cmp='=';
+    
+    bool compare(const CommandCount &anItem) {
+      if(command==anItem.command) {
+        if('>'==cmp) return anItem.count>count;
+        return true;
+      }
+      return false;
+    }
+  };
+
+  using Responses = std::vector<CommandCount>;
+  using ExpectList = std::initializer_list<CommandCount>;
+
+  class Expected {
+  public:
+    Expected(const ExpectList &aList) : expected(aList) {}
+    
+    bool operator==(const Responses &aResponses) {
+      size_t theSize=expected.size();
+      if(theSize && aResponses.size()==theSize) {
+        for(size_t i=0;i<theSize;i++) {
+          if(!expected[i].compare(aResponses[i])) {
+            return false;
+          }
+        }
+        return true;
+      }
+      return false;
+    }
+    
+  protected:
+    Responses expected;
+  };
+
   class TestAutomatic {
   protected:
     std::ostream &output;
@@ -73,7 +117,7 @@ namespace ECE141 {
     
     TestAutomatic(std::ostream &anOutput) : output(anOutput) {}
     
-    ~TestAutomatic() {std::cout << "Test Version 1.2\n";}
+    ~TestAutomatic() {std::cout << "Test Version 1.3\n";}
 
     
     void addUsersTable(std::ostream &anOutput) {
@@ -153,7 +197,7 @@ namespace ECE141 {
       if(theResult) {
         const char* theLines[]={
           theInput.c_str(),
-          "Version 0.3", "Help system available",
+          "Version 0.4", "Help system available",
           "DB::141 is shutting down"
         };
         
@@ -173,98 +217,96 @@ namespace ECE141 {
         
     //---------------------------------------------------
     
-
     enum states {wasUnknown, wasAlter, wasCreate, wasDescribe,
         wasDelete, wasDrop, wasDump, wasInsert, wasSelect,
         wasShow, wasUpdate, wasUse};
-    
-    //convert from string (word) to states enum...
-    states getTerm(const std::string &aWord) {
-      static std::map<std::string, states> gTerms = {
-        {"alter",states::wasAlter},
-        {"create",states::wasCreate},
-        {"delete",states::wasDelete},
-        {"describe",states::wasDescribe},
-        {"drop",states::wasDrop},
-        {"dump",states::wasDump},
-        {"insert",states::wasInsert},
-        {"select",states::wasSelect},
-        {"show",states::wasShow},
-        {"update",states::wasUpdate},
-        {"use",states::wasUse},
-      };
-      return gTerms.count(aWord) ? gTerms[aWord]
-                                 : states::wasUnknown;
-    }
-    
-    //extract count (numeric) from line
-    int getQueryCount(const std::string &aLine) {
-      std::stringstream temp(aLine);
-      std::string theWord;
-      int theNumber;
-      temp >> theWord >> theWord >> theNumber;
-      return theNumber;
-    }
-    
-    //extract first word (l/c) from line...
-    std::string getFirst(const std::string &aLine) {
-      std::stringstream temp(aLine);
-      std::string theFirst;
-      temp >> theFirst;
-      std::transform(theFirst.begin(),
-                     theFirst.end(), theFirst.begin(),
-          [](unsigned char c){ return std::tolower(c); });
-      return theFirst;
-    }
-    
-    //validates output of assignment2
-    bool hwIsValid(std::istream &aStream, CountList &aCounts) {
-      bool theResult=true;
-      states theState=states::wasUnknown;
-      
-      std::string theLine;
-      while(theResult && aStream) {
-        std::getline(aStream, theLine);
-        if(theLine.size()>2) {
-          //std::cout << theLine << "\n";
-          std::string theWord=getFirst(theLine);
-          switch(theState) {
-            case wasUnknown:
-              theState=getTerm(theWord); break;
-            case wasUse:
-              //if(theWord=="database") {theState=wasUnknown;}
-              theState=wasUnknown;
-              break;
-            case wasAlter:
-            case wasCreate:
-            case wasDelete:
-            case wasInsert:
-            case wasUpdate:
-            case wasDrop:
-              if(theWord=="query") {
-                aCounts.push_back(getQueryCount(theLine));
-                theState=wasUnknown;
-              }
-              else return false;
-              break;
-            case wasDescribe:
-            case wasDump:
-            case wasSelect:
-            case wasShow:
-              if(std::isdigit(theWord[0])) {
-                aCounts.push_back(stoi(theWord));
-                theState=wasUnknown;
-              }
-              else if(wasUnknown!=getTerm(theWord)) {
-                return false; //unexpected kw...
-              }
-              break;
-            default: break;
+              
+    //validates output of DBCommand test..
+    size_t analyzeOutput(std::istream &aStream, Responses &aResults) {
+        std::stack<Commands> theStack; //tracking open state...
+
+        static KWList createDB{Keywords::create_kw,Keywords::database_kw};
+        static KWList showDBs{Keywords::show_kw,Keywords::databases_kw};
+        static KWList dumpDB{Keywords::dump_kw,Keywords::database_kw};
+        static KWList dropDB{Keywords::drop_kw,Keywords::database_kw};
+        static KWList createTable{Keywords::create_kw,Keywords::table_kw};
+        static KWList showTables{Keywords::show_kw,Keywords::tables_kw};
+        static KWList dropTable{Keywords::drop_kw,Keywords::table_kw};
+        static KWList insertInto{Keywords::insert_kw,Keywords::into_kw};
+
+        Tokenizer theTokenizer(aStream);
+        if(theTokenizer.tokenize()) {
+        TestSequencer theSeq(theTokenizer);
+        int theValue{0};
+        while(theTokenizer.more()) {
+          if(theSeq.clear().nextIs(createDB)) {
+            if(theSeq.skip(2).nextIs({Keywords::query_kw}).skip(2)) {
+              theSeq.getNumber(theValue).skip(7);
+              aResults.push_back({Commands::createDB,theValue});
+            }
+          }
+          else if(theSeq.clear().nextIs(showDBs)) {
+            if(theSeq.skip(1)) {
+              theTokenizer.skipTo(TokenType::number);
+              theSeq.getNumber(theValue).skipPast(')');
+              aResults.push_back({Commands::showDBs,theValue});
+            }
+          }
+          else if(theSeq.clear().nextIs({Keywords::use_kw})) {
+            static KWList dbChanged{Keywords::database_kw,Keywords::changed_kw};
+            if(theSeq.skip(2).nextIs(dbChanged)) {
+              aResults.push_back({Commands::useDB, 1});
+            }
+          }
+          else if(theSeq.clear().nextIs(dropDB)) {
+            if(theSeq.skip(2).nextIs({Keywords::query_kw}).skip(2)) {
+              theSeq.getNumber(theValue).skipPast(')');
+              aResults.push_back({Commands::dropDB,theValue});
+            }
+          }
+          else if(theSeq.clear().nextIs(dumpDB)) {
+            if(theTokenizer.skipTo(Keywords::rows_kw)) {
+              auto theToken=theTokenizer.peek(-1);
+              theValue=std::stoi(theToken.data);
+              theSeq.skip(7);
+            }
+            aResults.push_back({Commands::dumpDB,theValue});
+          }
+          else if(theSeq.clear().nextIs(createTable)) {
+            if(theSeq.skipPast(';').nextIs({Keywords::query_kw}).skip(2)) {
+              theSeq.getNumber(theValue).skip(7);
+              aResults.push_back({Commands::createTable,theValue});
+            }
+          }
+          else if(theSeq.clear().nextIs(showTables)) {
+            theTokenizer.skipTo(TokenType::number);
+            theSeq.getNumber(theValue).skipPast(')');
+            aResults.push_back({Commands::showTables,theValue});
+          }
+          else if(theSeq.clear().nextIs(dropTable)) {
+            theTokenizer.skipTo(TokenType::number);
+            theSeq.getNumber(theValue).skipPast(')');
+            aResults.push_back({Commands::dropTable,theValue});
+          }
+          else if(theSeq.clear().nextIs(insertInto)) {
+            if(theSeq.skipPast(';').nextIs({Keywords::query_kw}).skip(2)) {
+              theSeq.getNumber(theValue).skip(7);
+              aResults.push_back({Commands::insert,theValue});
+            }
+          }
+          else if(theTokenizer.skipIf(Keywords::describe_kw)) {
+            if(theTokenizer.skipTo(Keywords::rows_kw)) {
+              auto theToken=theTokenizer.peek(-1);
+              theValue=std::stoi(theToken.data);
+              aResults.push_back({Commands::describe,theValue});
+              theSeq.clear().skipPast(')');
+            }
           }
         }
       }
-      return theResult;
+      return aResults.size();
     }
+        
     using FileList = std::vector<std::string>;
     
     bool hasFiles(FileList &aFilelist) {
@@ -302,8 +344,8 @@ namespace ECE141 {
       });
       return theCount;
     }
-    
-  //----------------------------------------------
+      
+   //----------------------------------------------
     bool createFile(const std::string &aPath, const std::string &aName) {
       std::string temp(aPath);
       temp+='/';
@@ -327,14 +369,13 @@ namespace ECE141 {
       });
       return theCount>0;
     }
-    
     //----------------------------------------------
 
     bool doDBCommandsTest() {
       
       std::vector<std::string> theFiles;
       
-      size_t theDBCount=countDBFiles();
+      //size_t theDBCount=countDBFiles();
       
       char theType='A';
       theFiles.push_back(getRandomDBName(theType));
@@ -355,43 +396,126 @@ namespace ECE141 {
       if(theResult) {
         auto temp=theOutput1.str();
         output << temp; //show user...
-        
-        CountList theCounts;
-        if((theResult=hwIsValid(theOutput1,theCounts))) {
-          CountList theOpts{1,1,1, static_cast<int>(3+theDBCount)};
-          if(!compareCounts(theCounts,theOpts,100)) {
-            return false; //something is wrong...
+        //std::cout << temp;
+              
+        Responses theResponses;
+        auto theCount=analyzeOutput(theOutput1,theResponses);
+             
+        Expected theExpected({
+          {Commands::createDB,1}, {Commands::createDB,1},
+          {Commands::createDB,1}, {Commands::useDB,0},
+          {Commands::showDBs,2,'>'}
+        });
+     
+        if(theCount && theExpected==theResponses) {
+          std::stringstream theStream2;
+          theStream2 << "DRop dataBASE "+theFiles[1] << ";\n";
+          theStream2 << "shoW databaseS;\n";
+          theStream2 << "dump database "+theFiles[0] << ";\n";
+          theStream2 << "drop database "+theFiles[0] << ";\n";
+          theStream2 << "drop database "+theFiles[2] << ";\n";
+
+          std::stringstream theOutput2;
+          if((theResult=doScriptTest(theStream2,theOutput2))) {
+            temp=theOutput2.str();
+            output << temp << "\n"; //DEBUG!
+            //std::cout << temp << "\n"; //DEBUG
+            std::stringstream theOutput(temp);
+  
+            int thePrevDBCount=theResponses[4].count;
+            Responses theResponses2;
+
+            if((theResult=analyzeOutput(theOutput,theResponses2))) {
+
+              Expected theExpected({
+                {Commands::dropDB,0}, {Commands::showDBs,thePrevDBCount-1},
+                {Commands::dumpDB,0,'>'}, {Commands::dropDB,0},
+                {Commands::dropDB}
+              });
+           
+              if(theExpected==theResponses2) {
+                return true;
+              }
+            }
+  
           }
         }
+        else theResult=false;
 
-        std::stringstream theStream2;
-        theStream2 << "DRop dataBASE "+theFiles[1] << ";\n";
-        theStream2 << "shoW databaseS;\n";
-        theStream2 << "dump database "+theFiles[0] << ";\n";
-        theStream2 << "drop database "+theFiles[0] << ";\n";
-        theStream2 << "drop database "+theFiles[2] << ";\n";
-
-        std::stringstream theOutput2;
-        if((theResult=doScriptTest(theStream2,theOutput2))) {
-          temp=theOutput2.str();
-          //std::cout << temp << "\n"; //DEBUG!
-          
-          output << temp; //show user...
-          std::stringstream theOutput(temp);
-          size_t thePrevDBCount=theCounts[3];
-          theCounts.clear();
-          if((theResult=hwIsValid(theOutput,theCounts))) {
-            CountList theOpts2{0,3,0,0,0};
-            theOpts2[1]=static_cast<int>(thePrevDBCount-1);
-            //theOpts[5]=theOpts[3]-1;
-            theResult=compareCounts(theCounts,theOpts2,100);
-          }
-          
-        }
       }
       return theResult;
     }
+          
+  void insertUsers(std::ostream &anOut,
+                   size_t anOffset, size_t aLimit) {
+    static const char* kUsers[]={
+      " (\"terry\",\"pratchett\",92124)",
+      " (\"ian\",\"tregellis\",92123)",
+      " (\"jody\",\"taylor\",92120)",
+      " (\"stephen\",\"king\",92125)",
+      " (\"ted\",\"chiang\",92120)"
+    };
     
+    anOut<<"INSERT INTO Users (first_name, last_name, zipcode)";
+    
+    size_t theSize=sizeof(kUsers)/sizeof(char*);
+    size_t theLimit=std::min(theSize, anOffset+aLimit);
+    const char* thePrefix=" VALUES";
+    for(size_t i=anOffset;i<theLimit;i++) {
+      anOut << thePrefix << kUsers[i];
+      thePrefix=",";
+    }
+    anOut << ";\n";
+  }
+        
+  void insertFakeUsers(std::ostream &anOut,
+                       size_t aGroupSize,
+                       size_t aGroupCount) {
+    
+    for(size_t theCount=0;theCount<aGroupCount;theCount++) {
+      anOut<<"INSERT INTO Users (first_name, last_name, zipcode) VALUES ";
+      const char* thePrefix="";
+      for(size_t theSize=0;theSize<aGroupSize;theSize++) {
+        anOut << thePrefix <<
+          '(' << '"' << Fake::People::first_name() << "\"," <<
+          '"' << Fake::People::last_name() << "\"," <<
+          Fake::Places::zipcode() << ')';
+        thePrefix=",";
+      }
+      anOut << ";\n";
+    }
+  }
+    
+  void insertBooks(std::ostream &anOut,
+                   size_t anOffset, size_t aLimit) {
+    static const char* kBooks[]={
+      " (\"The Green Mile\",4)",
+      " (\"The Stand\",4)",
+      " (\"The Misery\",4)",
+      " (\"11/22/63\",4)",
+      " (\"The Institute\",4)",
+      " (\"The Thief of Time\",1)",
+      " (\"The Wintersmith\",1)",
+      " (\"The Monster Regiment\",1)",
+      " (\"Thud\",1)",
+      " (\"The Time Police\",3)",
+      " (\"The Mechanical\",2)",
+      " (\"The Liberation\",2)",
+      " (\"The Rising\",2)",
+      " (\"Exhalation\",5)",
+    };
+    
+    anOut<<"INSERT INTO Books (title, user_id)";
+    
+    size_t theSize=sizeof(kBooks)/sizeof(char*);
+    size_t theLimit=std::min(theSize, anOffset+aLimit);
+    const char* thePrefix=" VALUES";
+    for(size_t i=anOffset;i<theLimit;i++) {
+      anOut << thePrefix << kBooks[i];
+      thePrefix=",";
+    }
+    anOut << ";\n";
+  }
     //----------------------------------------------
 
     bool doTablesTest() {
@@ -411,7 +535,6 @@ namespace ECE141 {
       theStream1 << "drop table Accounts;\n";
       theStream1 << "show tables;\n";
       theStream1 << "drop database " << theDBName << ";\n";
-      theStream1 << "quit;\n";
 
       std::string temp(theStream1.str());
       std::stringstream theInput(temp);
@@ -420,18 +543,69 @@ namespace ECE141 {
       if(theResult) {
         std::string tempStr=theOutput1.str();
         std::stringstream theOutput2(tempStr);
-        //std::cout << tempStr << "\n";
+//        output << tempStr << "\n"; //DEBUG!
         
-        CountList theCounts;
-        if((theResult=hwIsValid(theOutput2,theCounts))) {
-          static CountList theOpts{1,1,1,1,3,3,1,2,0};
-          theResult=compareCounts(theCounts,theOpts,20);
-          output << tempStr << "\n";
+        Responses theResponses;
+        auto theCount=analyzeOutput(theOutput1,theResponses);
+             
+        Expected theExpected({
+          {Commands::createDB,1},    {Commands::useDB,1},
+          {Commands::createTable,1}, {Commands::createTable,1},
+          {Commands::createTable,1}, {Commands::showTables,3},
+          {Commands::describe,3},    {Commands::dropTable,1},
+          {Commands::showTables,3},  {Commands::dropDB,1},
+        });
+     
+        if(!theCount || !(theExpected==theResponses)) {
+          theResult=false;
         }
+        
       }
       return theResult;
     }
+    
+    bool doInsertTest() {
+ 
+      std::string theDBName(getRandomDBName('C'));
+  
+      std::stringstream theStream1;
+      theStream1 << "create database " << theDBName << ";\n";
+      theStream1 << "use " << theDBName << ";\n";
+      
+      addUsersTable(theStream1);
+      insertUsers(theStream1,0,2);
 
+      theStream1 << "show tables;\n";
+      theStream1 << "dump database " << theDBName << ";\n";
+      theStream1 << "drop database " << theDBName << ";\n";
+            
+      std::string temp(theStream1.str());
+      std::stringstream theInput(temp);
+      std::stringstream theOutput;
+      bool theResult=doScriptTest(theInput,theOutput);
+      if(theResult) {
+        std::string tempStr=theOutput.str();
+        output << "output \n" << tempStr << "\n";
+        //std::cout << tempStr << "\n";
+        
+        Responses theResponses;
+        auto theCount=analyzeOutput(theOutput,theResponses);
+             
+        Expected theExpected({
+          {Commands::createDB,1},    {Commands::useDB,1},
+          {Commands::createTable,1}, {Commands::insert,2},
+          {Commands::showTables,1},  {Commands::dumpDB,3,'>'},
+          {Commands::dropDB,0},
+        });
+     
+        if(!theCount || !(theExpected==theResponses)) {
+          theResult=false;
+        }
+   
+      }
+      return theResult;
+    }
+    
   };
 
 }

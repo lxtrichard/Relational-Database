@@ -1,188 +1,131 @@
-# SP22-Assignment3
-Getting started with table commands
+# SP22-Assignment4
+#### Due Wednesday - April 27, 2022 - 11:30pm 
 
-#### Due Monday, April 18, 2022, @11:30pm
+## Overview -- Let's Insert Records!
 
-It's time to start building tables!
+In this assignment, we are going to implement the `Insert into` command that will allow us to add records to our database. As usual, this will build on the work we've been doing in prior assignments in the `SQLProcessor`, `Database` and `Entity` classes.
 
-## Overview 
+Let's get started!
 
-In this assignment, we're going to start handling "table-related" commands.  In order to so so, we're going to introduce our 3rd and final CommandProcessor: `SQLProcessor`.  This class will provide support for four new commands:
+> **NOTE:** Be careful not to overwrite the files we provided with prior versions.
 
-1. create table `table-name`
-2. drop table `table-name`
-3. describe `table-name` 
-4. show tables
+<hr>
 
-## Integrating files from assignment #3 with this assignment
+## Key Classes in This Assignment 
 
-To do this assignment, you will copy _almost_ all of your files from your assignment#2 project folder into the folder for this assignment.  There are three files you will **NOT** copy over from Assignment #2:
+You'll discover that the following classes are significant in this assignment:
 
-1. main.cpp
-2. TestAutomatic.hpp
+### The `Value` class
 
-These files all have slight changes in Assignment #3, and should not be overridden.
-
-## New Classes in This Assignment 
-
-### The `Entity` class 
-
-Consider the situation where a user wants to create a database table, by issuing a "create table..." command shown below: 
-
-```
-CREATE TABLE tasks (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  title VARCHAR(100) NOT NULL,
-  price FLOAT DEFAULT 0.0,
-  due_date TIMESTAMP, //2020-04-15 10:11:12
-  status BOOLEAN DEFAULT FALSE,
-)
-CREATE TABLE tasks ( id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(100) NOT NULL, price FLOAT DEFAULT 0.0, due_date TIMESTAMP, status BOOLEAN DEFAULT FALSE,)
-```
-
-The `Entity` class is an in-memory representation of a table defintion. It's a container class, that contains one-or-more `Attributes`. 
-In this example, we defined a table with 5 attributes (task_id, title, price, due_date, status).  We provide you a (nearly) empty version of this file -- and you are free to make any changes you want. 
-
-### The `Attribute` class
-
-An `Attribute` represents a single "field" in a database table defintion (`Entity`). In the table defintion shown above, `task_id` is an example `Attribute`.  The attribute class needs to be able to store the following information:
-
-```
-- field_name
-- field_type  (bool, float, integer, timestamp, varchar)  //varchar has length
-- field_length (only applies to text fields)
-- auto_increment (determines if this (integer) field is autoincremented by DB
-- primary_key  (bool indicates that field represents primary key)
-- nullable (bool indicates the field can be null)
-```
-
-We provide you an empty version of this class file, and you are free to make any changes you want. 
+We need a class that can represent each "field" of user data in a record/row. In lecture we've been discussing the use of the `std::variant` class for this purpose.  Our value class can simply be the `std::variant`, or you can create your own custom class, and add some extra utility (helper) functions. 
 
 ### The `Row` class
 
-You are given a new `Row` class. This will hold user data for a given row. The `Row` class will also participate in the storage process. Eventually each `Row` will be stored in a `Block` inside the storage system, and retrieved later to be shown in a `TableView`.  You won't need this until next week.
+A `Row` is a collection of user data. Imagine that the user creates a `Users` table and inserts a few records. If they subsequently issue a `SELECT * from Users where  id=1` statement -- the database will return a collection of `Row` objects for this purpose. The row will contain a collection of key/value pairs (fieldnames + values). 
 
-> Note: At the bottom of `Row.hpp`. we've pre-defined a class called `RowCollection` that you'll use in subsequent assignments. 
+### The `Entity` class
 
-### The `SQLProcessor` class
+When a user inserts a records into a table, numerous validations must occur. We must ensure that the specified table exists, and that all the fields specified in the `insert` statement are declared in the `Entity`.  The `Entity` class is essential for both of these tasks.
 
-Our third (and final) CommandProcessor (subclass).  This class will handle commands outlined in this assignment.  We provide you a basic (mostly empty) class file and you will implement the associated features. You are free to make any changes or add any methods you want to this file. 
+We recommend that you take advantage of the `BlockIO::writeBlock()` method for storing your new data rows. Data rows are meant to be stored as a single block. 
 
-In this assignment, this class will be used to implement four new commands. It will handle additional commands in future assignments. 
+<hr>
 
-### The `TabularView` class
+## Challenges for Assignment #4
 
-A `TabularView` class is used to present user data (rows) as a result of a user issuing a `select...` statement.  You can (but are not required) to use this class to implement the `show tables` command. This class was added here as a placeholder, and to get you started thinking about how you might implement tabular views.
+### Challenge #1: Insert Into... 
 
-As you're building this class, consider how the `Entity` class might be helpful. 
-
-## Implement the Following System Commands 
-
-### Challenge 1: "create table `table-name`" 
-
-When a user issues this command, your `SQLProcessor` will make a corresponding statement object (subclass), that will try to parse the given input. If the input is valid, your code should construct an `Entity` object from that input. Then you'll ask the `Database` to save the given `Entity` in a block within the storage system.  This will result in the `Entity` object being encoded into a `StorageBlock` and saved in a DB file. 
+The `insert` command allows a user to insert (one or more) records into a given table. The command accepts a list of field, and a collection of value lists -- one for each record you want to insert. Below, is an examplw where we insert two records -- for our very own TA's!  `<applause>` 
+    
 
 ```
-> create table test1 (id int NOT NULL auto_increment primary key, first_name varchar(50) NOT NULL, last_name varchar(50));
-Query OK, 1 row affected (0.002 sec)
+INSERT INTO users 
+  ('first_name', 'last_name', 'email') 
+VALUES 
+  ('David','He', 'dyhe@ucsd.edu'),
+  ('Sai', 'Komatineni', 'saikomatineni@engucsd.edu');
 ```
 
-One thing to consider -- you will frequently need to retrieve the `Entity` for a given table from storage in order to perform other actions (like inserting records). How will you quickly find and retrieve the `Entity` for a given table from storage when you need it later?  You could, of course, perform a linear scan of every `Block` in the db storage file and try to locate the `Entity` for a named table. But that would be terribly slow in a large database.  Work with your partner (or your TA) to consider your options on ways to solve this. In class, we discussed the possibility of using an `Index` class that maps key/value pairs for each entity (key=entity_name, value=block_number);
+For this assignment, your code must handle the following tasks:
 
-> Note: When you save an `Entity` in the storage file, the associated "block-type" will be an "EntityBlock". If you were to use the `dump database {name}` command from last week, an "EntityBlock", make sure your output can distinguish an "EntityBlock" from a "Meta" or "Data" block by properly setting the `Block.header.type` field.
+1. given an "insert..." command - one of your processors should create an `InsertStatement`  statement 
+2. The `InsertStatement` should parse and validate the input (example given above); validation includes insuring that the table specified in the command is a known table in the active `Database`
+3. Assuming a valid statement and a known `Entity`, your processor(s) should route this command a `controller` object (e.g. `Database`) to be executed
+4. A new `Row` should be constructed - and assigned a new primary key (type int). 
+5. Think carefully about how your system will manage primary keys for given table. Each time you insert a new `Row` it will need an integer value for its primary key field.  Some object in your system needs to be responsible for generating primary key values.  Keys are never reused.
+6. The new `Row` should be encoded/saved into to storage, and "associated" with the given table. This means that a new data block is added to the storage file, and that it contains attributes that associated the data row with the given table. Considering storing this information in the header portion of the `Block` used to store the data. 
 
+This seems like a lot, right?  We'll discuss how to break this down into something you can handle in lecture this week. 
 
-### Challenge 2: "show tables" 
+### Challenge #2: Preparing for `select * from table` (for next week) [OPTIONAL]
 
-As we discussed in class -- when a user issues this command in a SQL database, the list of known tables (from the database in use) are shown to the user in the terminal.  You will implement that now.   Let's assume that your user created a few tables. Your output should be similar to what you see in MySQL:
+Next week (assignment #5), your team will implement a basic vesrion of the `select` command.  Ordinarily, a database would attempt to load rows associated with a table by iterating an index. Since we don't yet have a general purpose indexing mechanism for our database, we need an alternative.
 
-```
-> show tables;
-+----------------------+
-| Tables_in_mydb       |
-+----------------------+
-| groups               |
-| users                |
-+----------------------+
-2 rows in set (0.000025 sec.)
-```
+As we discussed in lecture, your `Storage` class offers a `Storage::each(visitor)` method. Many of you used that method to implement the `dump database foo` command last week. As we've shown in the class a "visitor" pattern as implemented in `Storage::each` can be combined with either functors or closures to make easy work of iterating/searching all the blocks in a database storage file. 
 
-1. Create a `ShowTables` statement class that can recognize and parse this type of command
-2. Have the `SQLProcessor` handle this command, create the `ShowTables` statement object, and handle routing as usual 
-3. If all goes well, ask a controller object (maybe the `Database`?) to exectute the command and get the list of known `Entities` 
-4. Create a new `EntityView` class, and let that present a view that contains the list of tables in the DB 
+Let's presume we've created a "Users" table and inserted some records (Challenge #1). Consider what happens when someone issues the command, `SELECT * from Users`. You'll need to iterate the blocks in your DB storage file, and find those that are associated with the given table (users). 
 
-### Challenge 3: "drop table `table-name`"
+#### Question 1
+How will you find blocks that are associated with the given table?  Can the existing `Storage::each()` function be helpful here?
 
-When your user issues this command, then your system should attempt to locate and delete the associated `Entity` (table) from the storage system. If the table doesn't exist, report an "unknown table" error to your user.  
+#### Question 2 
+How do you convert a `Block` from a DB storage file back into a `Row` object (and vice versa)?
 
-```
-> drop table groups;
-Query OK, 0 rows affected (0.02 sec)
-```
+#### Question 3
+How will you build a collection of associated `Row` objects specified in the given `select * from Users` query?
 
-> **NOTE:** The number of rows affected depends on how many data rows are stored in the database for that table. 
+Considering these questions can help you correclty implement the `Insert INTO...` statement, and prepare to implement a basic `SELECT` in assignment #5.
 
-As we discussed in lecture, "deleting" a `Block` means to set (and save) the `Block.header.type`='F' (for free). 
+<hr>
 
-> NOTE: If a user deletes a table that has associated records (or indexes), these elements must also be deleted from Storage. This isn't a concern today, because we can't add records yet. But give this some consideration for a future assignment.
+## Testing This Assignment
 
-1. Create a `DropTableStatement` class (subclass of `Statement`) that can parse this syntax
-2. Let the `SQLProcessor` process and route this command
-3. Assuming this given `table-name` actually exists, ask the `Database` object to delete that `Entity` and associated data.
-4. Report the results back to your user (see example above)
+> **NOTE**: Make sure you update the "version" value for your `Version` command. The new version number should be 0.4. 
 
-### Challenge 4: "describe `table-name`"
-
-When your user issues this command, then your system should attempt to locate and describe the associated `Schema`. If the table doesn't exist, report an "unknown table" error to your user.
-
-As we discussed in lecture, "describing" a `Schema` means to print out a textual description of the attributes of the given table. For example, if we were to issue the command "describe tasks" (using the table description above) we would see:
+For our autograder, we're going to validate your `insert` command is working by monitoring the state of your storage file (.db).  A sample test might look like this:
 
 ```
-> DESCRIBE tasks;
-+-----------+--------------+------+-----+---------+-----------------------------+
-| Field     | Type         | Null | Key | Default | Extra                       |
-+-----------+--------------+------+-----+---------+-----------------------------+
-| id        | integer      | NO   | YES | NULL    | auto_increment primary key  |
-| title     | varchar(100) | NO   |     | NULL    |                             |
-| price     | float        | YES  |     | 0.0     |                             |
-| due_date  | date         | YES  |     | NULL    |                             |
-| status    | boolean      | YES  |     | FALSE   |                             |
-+-----------+--------------+------+-----+---------+-----------------------------+
-5 rows in set (0.000043 sec.)
+create database foo;
+use database foo;
+create table users ... (etc.);
+insert into users (field1, field2...) values (record-1-values), (record-2-values);
+dump database foo;
 ```
 
-1. Create a `DescribeTableStatement` that can parse this statement
-2. Let the `SQLProcessor` process and route this command
-3. Assuming this given `table-name` actually exists, ask the `Database` object to handle this command 
-4. Create a `TableDescriptionView` to show the table description (shown above)
+The output of your dump statement should show something like this (we don't validate the columns you choose to output):
 
+```
+> dump database foo;
++------+-----------+-----+
+| #    | Type      | Id  |
++------+-----------+-----+
+| 0    | meta      |     |
+| 1    | entity    |     |
+| 2    | data      | 1   |
+| 3    | data      | 2   |
++------+-----------+-----+
+4 rows in set (0.00024 secs)
+```
 
-## Testing
-
-As before, we recommend you perform testing on your solution by creating a test script. You can also use the auto-grader provided on github classroom for this assignment.
-
-> **NOTE:**: Update the output value for your version command, so to that this application is version 1.3. 
+As always you can use the auto-grader to help get your code to perform as expected.
 
 ## Grading
-
-1. You have implemented the `SQLProcessor`, `Attribute`, `Entity`,  and `ShowsTablesView` classes
-2. You have implemented the `CreateTable`, `DropTable`, `DescribeTable`, and `ShowTables` statement classes
-3. You have implemented the code neccesary to get the four commands (listed above) to work correctly
-4. Your code passes the auto-grader tests. 
+- You have implemented the Insert Into statement
+- You can add rows to the storage 
+- Your code passes the auto-grader tests.
 
 ```
 Compile-test : 5pts
 App-test: 5pts
-Reader-test: 10pts
-DB-test: 10pts
-Table-test: 70pts
+DBCommands: 20pts
+Table-test: 20pts
+Insert-test: 50pts
 ```
 
 ## Submitting Your Work
-#### Due Monday, April 18, 2022, @11:30pm
 
-You and your partner should make sure you turn your solution in on time!  Also -- make sure you have updated the `students.json` file to contain the name of each contributor to your project. Also -- update the assignment number in the students.json file to assignment #3.
+### Due Wednesday - April 27, 2022 - 11:30pm
+You and your partner should make sure you turn your solution in on time! Also -- make sure you have updated the students.json file to contain the name of each contributor to your project.
 
 Good luck everyone!
 

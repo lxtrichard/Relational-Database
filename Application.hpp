@@ -24,7 +24,7 @@ namespace ECE141 {
     virtual ~Application();
 
       //app api...
-            std::string   getVersion() {return "0.3";}
+            std::string   getVersion() {return "0.4";}
     
     virtual StatusResult  handleInput(std::istream &anInput);
             CmdProcessor* recognizes(Tokenizer &aTokenizer) override;

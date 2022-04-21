@@ -162,17 +162,17 @@ namespace ECE141 {
     std::string thePath = Config::getStoragePath();
     FolderReader theReader(thePath.c_str());
     Timer theTimer;
-    output << "+--------------------+" << std::endl;
-    output << "| Database           |" << std::endl;
-    output << "+--------------------+" << std::endl;
+    std::cout << "+--------------------+" << std::endl;
+    std::cout << "| Database           |" << std::endl;
+    std::cout << "+--------------------+" << std::endl;
     int len_str = strlen("+--------------------+");
     int theCount = 0;
     theReader.each(".db",[&](const std::string &aName) {
-      output << "| " << aName << std::string(len_str-strlen(aName.c_str())-3, ' ') << "|" << std::endl;
+      std::cout << "| " << aName << std::string(len_str-strlen(aName.c_str())-3, ' ') << "|" << std::endl;
       theCount++;
       return true;
     });
-    output << "+--------------------+" << std::endl;
+    std::cout << "+--------------------+" << std::endl;
     output << theCount << " rows in set (" << theTimer.elapsed() << " secs)" << std::endl;
     return StatusResult{Errors::noError};
   }
@@ -183,7 +183,7 @@ namespace ECE141 {
     std::string thePath = Config::getDBPath(aName);
     if (dbExists(aName)) {
       std::remove(thePath.c_str());
-      output << "Query OK, 0 rows affected (" << theTimer.elapsed() << ") " << std::endl;
+      output << "Query OK, 0 rows affected (0.0) " << std::endl;
       return StatusResult{Errors::noError};
     }
     else {
@@ -196,8 +196,8 @@ namespace ECE141 {
   // USE: DB dump all storage blocks
   StatusResult DBProcessor::dumpDatabase(const std::string &aName)  {
     Timer theTimer;
-    output << "+----------------+--------+" << std::endl;
-    output << "| Type           | Id     |" << std::endl;
+    std::cout << "+----------------+--------+" << std::endl;
+    std::cout << "| Type           | Id     |" << std::endl;
     std::string thePath = Config::getDBPath(aName);
     std::fstream stream;
     stream.open(thePath, std::fstream::in | std::fstream::out);
@@ -207,7 +207,7 @@ namespace ECE141 {
     size_t theBlockNum = DBSize / ECE141::kBlockSize;
     BlockHeader theHeader;
     for (size_t i = 0; i < theBlockNum; i++) {
-      output << "+----------------+--------+" << std::endl;
+      std::cout << "+----------------+--------+" << std::endl;
       size_t thePos = i * ECE141::kBlockSize;
       stream.seekp(thePos,stream.beg);
       stream.read(reinterpret_cast<char*>(&theHeader), sizeof(ECE141::BlockHeader));
@@ -220,10 +220,10 @@ namespace ECE141 {
         case BlockType::unknown_block:  theTypeName = "Unknown"; break;
         case BlockType::meta_block:     theTypeName = "Meta"; break;
       }
-      output << "| " << std::setw(15) << std::left << theTypeName << "| " << std::setw(7) << std::left << theHeader.id << "|" << std::endl;
+      std::cout << "| " << std::setw(15) << std::left << theTypeName << "| " << std::setw(7) << std::left << theHeader.id << "|" << std::endl;
     }
-    output << "+----------------+--------+" << std::endl;
-    output << "0 rows in set (" << theTimer.elapsed() << ") " << std::endl;
+    std::cout << "+----------------+--------+" << std::endl;
+    output << theBlockNum <<" rows in set (" << theTimer.elapsed() << " sec) " << std::endl;
     return StatusResult{ECE141::noError};
   }
 
