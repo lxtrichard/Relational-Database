@@ -16,7 +16,7 @@
 namespace ECE141 {
 
   // USE: provide view class that lists db files in storage path...
-  class FolderView : public View {
+  class FolderView {
   public:
     FolderView(const char *aPath, const char *anExtension="db")
       : reader(aPath), extension(anExtension) {}

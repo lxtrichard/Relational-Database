@@ -7,7 +7,6 @@ namespace ECE141
 {
   SQLStatement::SQLStatement(SQLProcessor &aSQLProcessor, Keywords aStmtType) : Statement(aStmtType), theSQLProcessor(&aSQLProcessor){}
 
-  SQLStatement::~SQLStatement(){}
 
   CreateStatement::CreateStatement(SQLProcessor &aSQLProcessor) : 
   SQLStatement(aSQLProcessor, Keywords::create_kw) {}
@@ -187,10 +186,6 @@ namespace ECE141
     }
     return StatusResult{Errors::syntaxError};
   };
-
-  StatusResult CreateStatement::run(std::ostream &aStream) const {
-    return StatusResult{Errors::noError};
-  };
   
   ShowStatement::ShowStatement(SQLProcessor &aSQLProcessor) : 
     SQLStatement(aSQLProcessor, Keywords::show_kw) {}
@@ -204,10 +199,6 @@ namespace ECE141
     return StatusResult{Errors::unknownCommand};
   }
 
-  StatusResult ShowStatement::run(std::ostream &aStream) const {
-    return StatusResult{Errors::noError};
-  };
-
   DescribeStatement::DescribeStatement(SQLProcessor &aSQLProcessor) : 
     SQLStatement(aSQLProcessor, Keywords::describe_kw) {}
 
@@ -220,10 +211,6 @@ namespace ECE141
     }
     return StatusResult{Errors::unknownCommand};
   }
-
-  StatusResult DescribeStatement::run(std::ostream &aStream) const {
-    return StatusResult{Errors::noError};
-  };
 
   DropStatement::DropStatement(SQLProcessor &aSQLProcessor) : 
     SQLStatement(aSQLProcessor, Keywords::drop_kw) {}
@@ -241,9 +228,110 @@ namespace ECE141
     return StatusResult{Errors::unknownCommand};
   }
 
-  StatusResult DropStatement::run(std::ostream &aStream) const {
-    return StatusResult{Errors::noError};
-  };
+  InsertStatement::InsertStatement(SQLProcessor &aSQLProcessor) : 
+  SQLStatement(aSQLProcessor, Keywords::insert_kw) {}
 
+  StatusResult InsertStatement::parse(Tokenizer &aTokenizer){
+    int anIndex = 3;
+    Token &theToken = aTokenizer.peek(1);
+
+    if (theToken.keyword == Keywords::into_kw){
+      theToken = aTokenizer.peek(2);
+      if (theToken.type == TokenType::identifier){
+
+        // TODO: Need to put a check if table is present in the DB
+        thetableName = theToken.data;
+        theToken = aTokenizer.peek(3);
+
+        if (theToken.data[0]=='(') {
+          while(aTokenizer.peek(anIndex).data[0]!=')') {
+            ++anIndex;
+
+            if(aTokenizer.peek(anIndex).data[0]=='\"') {
+              anIndex++;
+            }
+            if(aTokenizer.peek(anIndex).type != TokenType::identifier) {
+              return StatusResult{Errors::invalidArguments};
+            }
+
+            theToken = aTokenizer.peek(anIndex);
+            theAttributeNames.push_back(theToken.data);
+            anIndex++;
+
+            if(aTokenizer.peek(anIndex).data[0]=='\"') {
+              anIndex++;
+            }
+
+            if(aTokenizer.peek(anIndex).data[0]==')') {
+              break;
+            }
+            if(aTokenizer.peek(anIndex).data[0]!=',') {
+              return StatusResult{Errors::invalidArguments};
+            }
+          }
+
+        }
+
+        anIndex++;
+
+        theToken = aTokenizer.peek(anIndex);
+
+        if(theToken.keyword == Keywords::values_kw) {
+          anIndex++;
+          while(aTokenizer.peek(anIndex).data[0]!=';') {
+            if(aTokenizer.peek(anIndex).data[0]!='(') {
+              return StatusResult{Errors::invalidArguments};
+            }
+
+            anIndex++;
+            std::vector<std::string> theValueNames;
+            while(aTokenizer.peek(anIndex).data[0]!=')') {
+              if(aTokenizer.peek(anIndex).data[0]=='\"') {
+                anIndex++;
+              }
+              
+              if(aTokenizer.peek(anIndex).type != TokenType::identifier && aTokenizer.peek(anIndex).type != TokenType::number) {
+                return StatusResult{Errors::invalidArguments};
+              }
+              theToken = aTokenizer.peek(anIndex);
+              theValueNames.push_back(theToken.data);
+
+              anIndex++;
+              if(aTokenizer.peek(anIndex).data[0]=='\"') {
+                anIndex++;
+              }
+              
+              if(aTokenizer.peek(anIndex).data[0]==')') {
+                break;
+              }
+              if(aTokenizer.peek(anIndex).data[0]!=',') {
+                return StatusResult{Errors::invalidArguments};
+              }
+              anIndex++;
+            }
+
+            if (theAttributeNames.size()!=theValueNames.size()) {
+              return StatusResult{Errors::invalidArguments};
+            }
+
+            // make a Row object
+            // vector of struct info: a pair of key value
+            // make a vector of rows.
+            anIndex++;
+            values.push_back(theValueNames);
+            if(aTokenizer.peek(anIndex).data[0]==';') {
+              break;
+            }
+            if (aTokenizer.peek(anIndex).data[0]!=',') {
+              return StatusResult{Errors::unknownCommand};
+            }
+            anIndex++;
+          } 
+        }
+      }
+    }
+    aTokenizer.next(aTokenizer.size()-1);
+    return StatusResult{Errors::noError};
+  }
 
 } // namespace ECE141

@@ -23,6 +23,14 @@ namespace ECE141 {
   Storage::~Storage() {
   }
 
+  uint32_t Storage::getNextFreeBlock(){
+    uint32_t res = getBlockCount();
+    if (availBlocks.size() > 0) {
+      res = *availBlocks.begin();
+    }
+    return res;
+  }
+
   uint32_t Storage::getFreeBlock() {
     uint32_t res = getBlockCount();
 

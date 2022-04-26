@@ -37,8 +37,11 @@ namespace ECE141 {
         
     const AttributeList&  getAttributes() const {return attributes;}
     Entity&               addAttribute(const Attribute &anAttribute);
-    const Attribute*            getAttribute(const std::string &aName) const;
+    const Attribute*      getAttribute(const std::string &aName) const;
     const Attribute*      getPrimaryKey() const;
+
+    uint32_t              getIncrement() {return autoincr++;}
+
 
     StatusResult encode(std::ostream& anOutput) override;
     StatusResult decode(std::istream& anInput) override;

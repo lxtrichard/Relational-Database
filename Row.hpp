@@ -15,16 +15,19 @@
 #include <vector>
 #include <memory>
 #include "Attribute.hpp"
+#include "Storage.hpp"
 
 //feel free to use this, or create your own version...
 
 namespace ECE141 {
 
-  class Row  {
+  class Row : public Storable {
   public:
 
-    Row(uint32_t entityId=0);
+    Row() :blockNumber(0) {};
     Row(const Row &aRow);
+    Row(KeyValues &aData, uint32_t aBlockNumber) 
+       : data(aData), blockNumber(aBlockNumber) {};
     
    // Row(const Attribute &anAttribute); //maybe?
     
@@ -37,14 +40,21 @@ namespace ECE141 {
                           
     Row&                set(const std::string &aKey,
                             const Value &aValue);
+    bool                updateData(KeyValues &aData);
+    void                setData(const std::string &aKey,
+                            const Value &aValue);
         
     KeyValues&          getData() {return data;}
+    uint32_t            getBlockNumber() {return blockNumber;}
     
     //uint32_t            entityId; //hash value of entity?
     //uint32_t            blockNumber;
+    StatusResult encode(std::ostream& anOutput) override;
+    StatusResult decode(std::istream& anInput) override;
 
   protected:
     KeyValues           data;
+    uint32_t            blockNumber;
   };
 
   //-------------------------------------------

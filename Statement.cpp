@@ -25,9 +25,4 @@ namespace ECE141 {
     return StatusResult{};
   }
   
-  StatusResult Statement::run(std::ostream &aStream) const {
-    //return commandable.runStatement(*this);
-    return StatusResult();
-  }
-  
 }

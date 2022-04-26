@@ -53,6 +53,7 @@ namespace ECE141 {
     StatusResult    load(std::iostream &aStream, uint32_t aStartBlockNum);
 
     StatusResult    releaseBlocks(uint32_t aBlockNum);
+    uint32_t        getNextFreeBlock();
     uint32_t        getFreeBlock();
   protected:
     BlockList     availBlocks;

@@ -34,6 +34,7 @@ int main(int argc, const char * argv[]) {
       {"DBCommands",  [&](){return theTests.doDBCommandsTest();}  },
       {"Tables",      [&](){return theTests.doTablesTest();}  },
       {"Insert",      [&](){return theTests.doInsertTest();}  },
+      {"Select",      [&](){return theTests.doSelectTest();}  },
     };
     
     std::string theCmd(argv[1]);

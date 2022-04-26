@@ -13,6 +13,8 @@
 #include "Storage.hpp"
 #include "Entity.hpp"
 #include "Helpers.hpp"
+#include "View.hpp"
+#include "Row.hpp"
 
 namespace ECE141 {
 
@@ -31,6 +33,10 @@ namespace ECE141 {
     StatusResult    showTables(std::ostream &anOutput);
     StatusResult    describeTable(std::ostream &anOutput, const std::string &aName);
     StatusResult    dropTable(std::ostream &anOutput, const std::string &aName);
+    StatusResult    insertRows(std::ostream &anOutput, 
+                      const std::string &aName,
+                      const std::vector<std::string> anAttributeNames, 
+                      const std::vector<std::vector<std::string>>& aValues);
 
     StatusResult    encode(std::ostream &aWriter) override;
     StatusResult    decode(std::istream &aReader) override;
@@ -43,6 +49,7 @@ namespace ECE141 {
     bool            changed;  //might be helpful, or ignore if you prefer.
     std::vector<Entity> theEntityList;
     KeyIndexes      theTableIndexes;
+    RowIndexes      theRowIndexes;
   };
 
 }

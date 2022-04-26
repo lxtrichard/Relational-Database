@@ -23,7 +23,7 @@ namespace ECE141 {
   }
 
   bool isAlphaNum(char aChar) {
-    return isalnum(aChar) || '_'==aChar;
+    return isalnum(aChar) || '_'==aChar || '@'==aChar || '.'==aChar;
   }
 
   bool isQuote(char aChar) {
@@ -39,7 +39,13 @@ namespace ECE141 {
   }
 
   bool isPunctuation(char aChar) {
-    return strchr("()[]{}:;,", aChar);
+    return strchr("()[]{}:;,\"", aChar);
+  }
+
+  bool isUnknown(char aChar) {
+    return !isWhitespace(aChar) && !isNumber(aChar) && 
+           !isAlphaNum(aChar) && !isQuote(aChar) && 
+           !isOperator(aChar) && !isPunctuation(aChar);
   }
 
   //-----------------------------------
@@ -171,6 +177,7 @@ namespace ECE141 {
           tokens.push_back(Token(theToken));
         }
       }
+      skipWhile(isUnknown);
       skipWhile(isWhitespace);
     }
     

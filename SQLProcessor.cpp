@@ -43,7 +43,7 @@ namespace ECE141 {
     case Keywords::show_kw: theStatement = new ShowStatement(*this); break;
     case Keywords::describe_kw: theStatement = new DescribeStatement(*this); break;
     case Keywords::drop_kw: theStatement = new DropStatement(*this); break;
-    case Keywords::insert_kw: return nullptr;
+    case Keywords::insert_kw: theStatement = new InsertStatement(*this); break;
     default: break;
     }
     if (theStatement) {
@@ -65,36 +65,42 @@ namespace ECE141 {
   }
 
   StatusResult  SQLProcessor::run(Statement *aStmt) {
-    SQLStatement *theStatement = dynamic_cast<SQLStatement*>(aStmt);
-    switch (theStatement->getType()) {
-    case Keywords::create_kw:
-      return createTable(theEntity);
-    case Keywords::drop_kw:
-      return dropTable(theStatement->getTableName());
-    case Keywords::describe_kw:
-      return describeTable(theStatement->getTableName());
-    case Keywords::show_kw:
-      return showTables();
-    default: break;
+    switch (aStmt->getType()) {
+      case Keywords::create_kw:
+        return createTable(aStmt);
+      case Keywords::describe_kw:
+        return describeTable(aStmt);
+      case Keywords::drop_kw:
+        return dropTable(aStmt);
+      case Keywords::show_kw:
+        return showTables();
+      case Keywords::insert_kw:
+        return insertRows(aStmt);
+      default: break;
     }
     return StatusResult{ Errors::notImplemented };
   }
 
-  StatusResult  SQLProcessor::createTable(Entity *anEntity){
+  StatusResult  SQLProcessor::createTable(Statement *aStmt){
+    SQLStatement *theStatement = dynamic_cast<SQLStatement*>(aStmt);
     if (activeDB) {
-      return activeDB->createTable(output, *anEntity);
+      return activeDB->createTable(output, *theEntity);
     }
     return StatusResult{Errors::noError};
   }
 
-  StatusResult  SQLProcessor::describeTable(const std::string &aName){
+  StatusResult  SQLProcessor::describeTable(Statement *aStmt){
+    SQLStatement *theStatement = dynamic_cast<SQLStatement*>(aStmt);
+    const std::string &aName = theStatement->getTableName();
     if (activeDB) {
       activeDB->describeTable(output, aName);
     }
     return StatusResult{ Errors::noError };
   }
 
-  StatusResult  SQLProcessor::dropTable(const std::string &aName){
+  StatusResult  SQLProcessor::dropTable(Statement *aStmt){
+    SQLStatement *theStatement = dynamic_cast<SQLStatement*>(aStmt);
+    const std::string &aName = theStatement->getTableName();
     if (activeDB) {
       activeDB->dropTable(output, aName);
     }
@@ -104,6 +110,17 @@ namespace ECE141 {
   StatusResult  SQLProcessor::showTables(){
     if (activeDB) {
       activeDB->showTables(output);
+    }
+    return StatusResult{ Errors::noError };
+  }
+
+  StatusResult  SQLProcessor::insertRows(Statement * aStmt){
+    InsertStatement* theStatement = dynamic_cast<InsertStatement*>(aStmt);
+    if (activeDB) {
+      return activeDB->insertRows(output, 
+                        theStatement->getTableName(),
+                        theStatement->getAttributes(),
+                        theStatement->getValues());
     }
     return StatusResult{ Errors::noError };
   }

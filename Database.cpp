@@ -61,7 +61,7 @@ namespace ECE141 {
         std::stringstream ss1;
         entity.encode(ss1);
         size_t pos = theTableIndexes[entity.getName()];
-        StorageInfo info(pos, ss1.str().size(), pos, BlockType::data_block);
+        StorageInfo info(pos, ss1.str().size(), pos, BlockType::entity_block);
         theStorage.save(ss1, info);
       }
     }
@@ -77,6 +77,7 @@ namespace ECE141 {
   // USE: Call this to create a table... 
   StatusResult Database::createTable(std::ostream &anOutput, Entity &anEntity) {
     Timer theTimer;
+    anOutput << std::setprecision(3) << std::fixed;
     std::string theName = anEntity.getName();
     if (theTableIndexes.find(theName) != theTableIndexes.end()) {
       return StatusResult{Errors::tableExists};
@@ -90,79 +91,34 @@ namespace ECE141 {
     StorageInfo info(blockNum, ss.str().size(), blockNum, BlockType::entity_block);
     theStorage.save(ss, info);
 
-    anOutput << "Query OK, 1 row affected (" << theTimer.elapsed() << " sec)" << std::endl;
+    anOutput << "Query OK, 1 row affected (" <<  theTimer.elapsed() << " sec)" << std::endl;
     changed = true;
     return StatusResult{noError};
   }
 
   StatusResult Database::showTables(std::ostream &anOutput){
-    Timer theTimer;
-
-    std::cout << "+----------------------+" << std::endl;
-    std::cout << "| Tables_in_" << std::setw(10) << std::left << name << " |" << std::endl;
-    std::cout << "+----------------------+" << std::endl;
-    for (auto& cur : theTableIndexes) {
-      std::cout << "| " << std::setw(20) << std::left << cur.first <<  " |" << std::endl;
-    }
-    std::cout << "+----------------------+" << std::endl;
-    anOutput << theTableIndexes.size() <<" rows in set ("<< theTimer.elapsed() << " sec.)" << std::endl;
-    stream.close();
+    TableView theView(anOutput);
+    theView.showTables(name, theTableIndexes);
     return StatusResult{noError};
   }
 
   StatusResult Database::describeTable(std::ostream &anOutput, const std::string &aName){
-    Timer theTimer;
-    for (auto &theEntity : theEntityList) {
-      if (theEntity.getName() == aName) {
-        std::cout << "+----------------+--------------+------+-----+---------+-----------------------------+" << std::endl;
-        std::cout << "| Field          | Type         | Null | Key | Default | Extra                       |" << std::endl;
-        std::cout << "+----------------+--------------+------+-----+---------+-----------------------------+" << std::endl;
-        Helpers aHelper;
-        for (auto attribute : theEntity.getAttributes()) {
-          std::string theType = aHelper.dataTypeToString(attribute.getType());
-          if (attribute.getType() == DataTypes::varchar_type) {
-            theType.append("(");
-            theType.append(std::to_string(attribute.getSize()));
-            theType.append(")");
-          }
-
-          std::cout << "| " << std::setw(15) << std::left << attribute.getName() << "| " 
-                   << std::setw(13) << std::left << theType << "| ";
-          if (attribute.isNullable()) {
-            std::cout << std::setw(5) << std::left << "YES" << "| ";
-          } 
-          else {
-            std::cout << std::setw(5) << std::left << "NO" << "| ";
-          }
-
-          if (attribute.isPrimaryKey()) {
-            std::cout << std::setw(4) << std::left << "YES" << "| ";
-          } 
-          else {
-            std::cout << std::setw(4) << std::left << "" << "| ";
-          }
-
-          std::cout << std::setw(8) << std::left;
-          if (attribute.hasDefault()) {
-            std::cout << attribute.DValuetoString() << "| ";
-          } 
-          else {
-            std::cout << "NULL" << "| ";
-          }
-
-          std::cout << std::setw(28) << std::left << "" << "|" ;
-          std::cout << std::endl;
-        }
-        std::cout << "+----------------+--------------+------+-----+---------+-----------------------------+" << std::endl;
-        anOutput << theEntity.getAttributes().size() << " rows in set ("<< theTimer.elapsed() << " sec)" << std::endl;
-        return StatusResult{noError};
-      }
+    Entity* theEntity = getEntity(aName);
+    bool result = theEntity;
+    if (result){
+      TableView theView(anOutput);
+      theView.describeTables(theEntity);
     }
-    return StatusResult{Errors::unknownTable};
+    else{
+      std::cout << "Query failed, table not found";
+      return StatusResult{Errors::unknownTable};
+    }
+    return StatusResult{noError};
   }
 
   StatusResult Database::dropTable(std::ostream &anOutput, const std::string &aName){
     Timer theTimer;
+    anOutput << std::setprecision(3) << std::fixed;
     if (!theTableIndexes.count(aName)) {
       return StatusResult{Errors::unknownTable};
     }
@@ -185,17 +141,97 @@ namespace ECE141 {
   }
 
   Entity* Database::getEntity(const std::string &aName){
-    for (auto entity : theEntityList) {
+    for (auto& entity : theEntityList) {
       if (entity.getName() == aName) {
         return &entity;
       }
     }
+    return nullptr;
   }
+
+  static bool stob(std::string aStr) {
+    if (stoi(aStr))
+      return true;
+    else
+      return false;
+  }
+
+  static void buildKeyValueList(std::vector<KeyValues> &aList, 
+      Entity* anEntity,
+      const std::vector<std::string> anAttributeNames, 
+      const std::vector<std::vector<std::string>>& aValues) {
+    int n = aValues.size(); // number of rows
+    int m = aValues[0].size(); // number of cols
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < m; j++) {
+        auto* theAtt = anEntity->getAttribute(anAttributeNames[j]);
+        switch (theAtt->getType()) {
+          case DataTypes::bool_type:
+            aList[i][theAtt->getName()] = stob(aValues[i][j]);
+            break;
+          case DataTypes::int_type:
+            aList[i][theAtt->getName()] = std::stoi(aValues[i][j]);
+            break;
+          case DataTypes::float_type:
+            aList[i][theAtt->getName()] = std::stof(aValues[i][j]);
+            break;
+          case DataTypes::varchar_type:
+            aList[i][theAtt->getName()] = aValues[i][j].substr(0, theAtt->getSize());
+            break;
+          case DataTypes::datetime_type:
+            aList[i][theAtt->getName()] = aValues[i][j];
+            break;
+          default:
+            break;
+        }
+      }
+    }
+  }
+
+  StatusResult Database::insertRows(std::ostream &anOutput, 
+                const std::string &aName,
+                const std::vector<std::string> anAttributeNames, 
+                const std::vector<std::vector<std::string>>& aValues){
+    Timer theTimer;
+    Entity* theTable = getEntity(aName);
+    if (!theTable) {
+      return StatusResult{Errors::unknownTable};
+    }
+    std::vector<KeyValues> theKeyValueList(aValues.size());
+    buildKeyValueList(theKeyValueList, theTable, anAttributeNames, aValues);
+    int RowAffected = 0;
+    for (auto& keyvalue : theKeyValueList) {
+      uint32_t blockNum = theStorage.getNextFreeBlock();
+      int id = theTable->getIncrement();
+      keyvalue["id"] = id;
+      Row theRow(keyvalue, blockNum);
+
+      theRowIndexes[theTable->getName()].push_back(blockNum);
+      std::stringstream ss;
+      theRow.encode(ss);
+      StorageInfo info(blockNum, ss.str().size(), kNewBlock, BlockType::data_block);
+      theStorage.save(ss, info);
+      RowAffected += 1;
+    }
+    changed = true;
+    anOutput << "Query OK, " << RowAffected << " rows affected (" <<  theTimer.elapsed() << " sec)" << std::endl;
+    return StatusResult{noError};
+  }
+
+
 
   StatusResult Database::encode(std::ostream &aWriter) {
     aWriter << name << ' ';
     for (auto& cur : theTableIndexes) {
       aWriter << cur.first << ' ' << cur.second << ' ';
+    }
+    aWriter << "# ";
+    for (auto& cur : theRowIndexes) {
+      aWriter << cur.first << ' ';
+      for (auto& blockNum : cur.second) {
+        aWriter << blockNum << ' ';
+      }
+      aWriter << "# ";
     }
     aWriter << "# ";
     return StatusResult{Errors::noError};
@@ -211,6 +247,19 @@ namespace ECE141 {
       aReader >> temp;
       uint32_t theBlockNum = std::stoul(temp);
       theTableIndexes[theName] = theBlockNum;
+    }
+    while (aReader >> temp) {
+      if (temp == "#")
+          break;
+      std::string theName = temp;
+      std::vector<uint32_t> theBlockNums;
+      while (aReader >> temp) {
+        if (temp == "#")
+            break;
+        uint32_t theBlockNum = std::stoul(temp);
+        theBlockNums.push_back(theBlockNum);
+      }
+      theRowIndexes[theName] = theBlockNums;
     }
     return StatusResult{Errors::noError};
   }

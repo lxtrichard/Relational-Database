@@ -31,8 +31,8 @@ namespace ECE141 {
   struct BlockHeader {
    
     BlockHeader(BlockType aType=BlockType::data_block)
-      : type(static_cast<char>(aType)), id(0),
-        size(0), next(0), pos(0) {}
+      : type(static_cast<char>(aType)), id(-1),
+        size(0), next(0), pos(0), count(0) {}
     
     BlockHeader(const BlockHeader &aCopy) {
       *this=aCopy;

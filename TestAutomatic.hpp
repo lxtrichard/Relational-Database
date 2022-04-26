@@ -117,7 +117,7 @@ namespace ECE141 {
     
     TestAutomatic(std::ostream &anOutput) : output(anOutput) {}
     
-    ~TestAutomatic() {std::cout << "Test Version 1.3\n";}
+    ~TestAutomatic() {std::cout << "Test Version 1.4\n";}
 
     
     void addUsersTable(std::ostream &anOutput) {
@@ -197,7 +197,7 @@ namespace ECE141 {
       if(theResult) {
         const char* theLines[]={
           theInput.c_str(),
-          "Version 0.4", "Help system available",
+          "Version 0.5", "Help system available",
           "DB::141 is shutting down"
         };
         
@@ -302,6 +302,15 @@ namespace ECE141 {
               theSeq.clear().skipPast(')');
             }
           }
+          else if(theSeq.clear().nextIs({Keywords::select_kw})) {
+            if(theTokenizer.skipTo(Keywords::rows_kw)) {
+              auto theToken=theTokenizer.peek(-1);
+              theValue=std::stoi(theToken.data);
+              aResults.push_back({Commands::select,theValue});
+              theSeq.clear().skipPast(')');
+            }
+          }
+          else theTokenizer.next(); //skip the token...
         }
       }
       return aResults.size();
@@ -396,7 +405,7 @@ namespace ECE141 {
       if(theResult) {
         auto temp=theOutput1.str();
         output << temp; //show user...
-        //std::cout << temp;
+        std::cout << temp;
               
         Responses theResponses;
         auto theCount=analyzeOutput(theOutput1,theResponses);
@@ -449,11 +458,11 @@ namespace ECE141 {
   void insertUsers(std::ostream &anOut,
                    size_t anOffset, size_t aLimit) {
     static const char* kUsers[]={
-      " (\"terry\",\"pratchett\",92124)",
-      " (\"ian\",\"tregellis\",92123)",
-      " (\"jody\",\"taylor\",92120)",
-      " (\"stephen\",\"king\",92125)",
-      " (\"ted\",\"chiang\",92120)"
+      " (\"terry\",  \"pratchett\", 92124)",
+      " (\"ian\",    \"tregellis\", 92123)",
+      " (\"jody\",   \"taylor\",    92120)",
+      " (\"stephen\",\"king\",      92125)",
+      " (\"ted\",    \"chiang\",    92120)"
     };
     
     anOut<<"INSERT INTO Users (first_name, last_name, zipcode)";
@@ -543,7 +552,7 @@ namespace ECE141 {
       if(theResult) {
         std::string tempStr=theOutput1.str();
         std::stringstream theOutput2(tempStr);
-//        output << tempStr << "\n"; //DEBUG!
+        output << tempStr << "\n"; //DEBUG!
         
         Responses theResponses;
         auto theCount=analyzeOutput(theOutput1,theResponses);
@@ -606,9 +615,71 @@ namespace ECE141 {
       return theResult;
     }
     
+    bool doSelectTest() {
+
+      std::stringstream theStream1;
+      std::string theDBName("db_"+std::to_string(rand()%9999));
+      theStream1 << "create database " << theDBName << ";\n";
+      theStream1 << "use " << theDBName << ";\n";
+      
+      addUsersTable(theStream1);
+      insertUsers(theStream1,0,2);
+      
+      theStream1 << "select * from Users;\n";
+      theStream1 << "show tables;\n";
+      theStream1 << "dump database " << theDBName << ";\n";
+      theStream1 << "drop database " << theDBName << ";\n";
+      
+      std::string temp(theStream1.str());
+      std::stringstream theInput(temp);
+      std::stringstream theOutput;
+      bool theResult=doScriptTest(theInput,theOutput);
+      if(theResult) {
+   
+        std::string tempStr=theOutput.str();
+        output << "output \n" << tempStr << "\n";
+        //std::cout << tempStr << "\n";
+        
+        Responses theResponses;
+        auto theCount=analyzeOutput(theOutput,theResponses);
+        
+        Expected theExpected({
+          {Commands::createDB,1},    {Commands::useDB,1},
+          {Commands::createTable,1}, {Commands::insert,2},
+          {Commands::select,2},      {Commands::showTables,1},
+          {Commands::dumpDB,3,'>'},  {Commands::dropDB,0},
+        });
+        // static CountList theExpected{1,0,2,2,1,4};
+
+        if(!theCount || !(theExpected==theResponses)) {
+          theResult=false;
+        }
+                           
+      }
+      return theResult;
+    }
+
+    bool doChangeTest() {
+      bool theResult=false;
+      return theResult;
+    }
+
+    bool doIndexTest() {
+      bool theResult=false;
+      return theResult;
+    }
+    
+    bool doJoinTest() {
+      bool theResult=false;
+      return theResult;
+    }
+
+    bool doCacheTest() {
+      bool theResult=false;
+      return theResult;
+    }
   };
 
 }
-
 
 #endif /* TestAutomatic_h */

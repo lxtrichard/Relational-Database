@@ -17,7 +17,7 @@ namespace ECE141 {
  //STUDENT: Implement this class...
 
   Entity::Entity(const std::string aName) :
-    name(aName),  autoincr(0) {}
+    name(aName),  autoincr(1) {}
 
   Entity::Entity(const Entity &aCopy) {
     name=aCopy.name;
@@ -54,6 +54,7 @@ namespace ECE141 {
   }
 
   StatusResult Entity::encode(std::ostream &anOutput) {
+    // anOutput << "Version 0.4";
     anOutput << name << ' ' << autoincr << ' ';
 
     for (auto attribute : attributes) {
@@ -66,6 +67,8 @@ namespace ECE141 {
   }
 
   StatusResult Entity::decode(std::istream &anInput) {
+    // std::string temp;
+    // anInput >> temp;
     anInput >> name;
 
     std::string temp;

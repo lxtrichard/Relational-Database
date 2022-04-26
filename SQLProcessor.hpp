@@ -34,10 +34,12 @@ namespace ECE141 {
     StatusResult  run(Statement *aStmt) override;
     
     //We don't DO the work here, but we can help route cmds...
-    StatusResult  createTable(Entity *anEntity);
-    StatusResult  describeTable(const std::string &aName);
-    StatusResult  dropTable(const std::string &aName);
+    StatusResult  createTable(Statement *aStmt);
+    StatusResult  describeTable(Statement *aStmt);
+    StatusResult  dropTable(Statement *aStmt);
     StatusResult  showTables();
+    StatusResult  insertRows(Statement *anInsertStmt);
+
     Database*     getActiveDB() {return activeDB;}
     SQLProcessor* setActiveDB(Database* aDB);
     SQLProcessor* setEntity(Entity* aEntity);

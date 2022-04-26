@@ -17,6 +17,7 @@
 #include "Application.hpp"
 #include "Helpers.hpp"
 
+
 namespace ECE141 {
 
   //like a typedef!!!
@@ -147,6 +148,7 @@ namespace ECE141 {
     activeDB = loadDatabase(aName);
     if (!activeDB){
       Timer theTimer;
+      output << std::setprecision(3) << std::fixed;
       activeDB = new Database(aName, CreateDB{});
       output << "Query OK, 1 row affected (" << theTimer.elapsed() << " secs)" << std::endl;
       return StatusResult{Errors::noError};
@@ -159,31 +161,19 @@ namespace ECE141 {
   
   StatusResult DBProcessor::showDatabases() const {
     //make a view, load with DB names from storage folder...
-    std::string thePath = Config::getStoragePath();
-    FolderReader theReader(thePath.c_str());
-    Timer theTimer;
-    std::cout << "+--------------------+" << std::endl;
-    std::cout << "| Database           |" << std::endl;
-    std::cout << "+--------------------+" << std::endl;
-    int len_str = strlen("+--------------------+");
-    int theCount = 0;
-    theReader.each(".db",[&](const std::string &aName) {
-      std::cout << "| " << aName << std::string(len_str-strlen(aName.c_str())-3, ' ') << "|" << std::endl;
-      theCount++;
-      return true;
-    });
-    std::cout << "+--------------------+" << std::endl;
-    output << theCount << " rows in set (" << theTimer.elapsed() << " secs)" << std::endl;
+    DBView theView(output);
+    theView.showDBs();
     return StatusResult{Errors::noError};
   }
 
   // USE: call this to perform the dropping of a database (remove the file)...
   StatusResult DBProcessor::dropDatabase(const std::string &aName) {
     Timer theTimer;
+    output << std::setprecision(3) << std::fixed;
     std::string thePath = Config::getDBPath(aName);
     if (dbExists(aName)) {
       std::remove(thePath.c_str());
-      output << "Query OK, 0 rows affected (0.0) " << std::endl;
+      output << "Query OK, 0 rows affected ("<< theTimer.elapsed() << " secs) " << std::endl;
       return StatusResult{Errors::noError};
     }
     else {
@@ -195,35 +185,12 @@ namespace ECE141 {
 
   // USE: DB dump all storage blocks
   StatusResult DBProcessor::dumpDatabase(const std::string &aName)  {
-    Timer theTimer;
-    std::cout << "+----------------+--------+" << std::endl;
-    std::cout << "| Type           | Id     |" << std::endl;
-    std::string thePath = Config::getDBPath(aName);
-    std::fstream stream;
-    stream.open(thePath, std::fstream::in | std::fstream::out);
-    stream.seekg(0, stream.end);
-    size_t DBSize = stream.tellg();
-    stream.seekg(0, stream.beg);
-    size_t theBlockNum = DBSize / ECE141::kBlockSize;
-    BlockHeader theHeader;
-    for (size_t i = 0; i < theBlockNum; i++) {
-      std::cout << "+----------------+--------+" << std::endl;
-      size_t thePos = i * ECE141::kBlockSize;
-      stream.seekp(thePos,stream.beg);
-      stream.read(reinterpret_cast<char*>(&theHeader), sizeof(ECE141::BlockHeader));
-      // convert blocktype into string
-      BlockType theType = static_cast<BlockType>(theHeader.type);
-      std::string theTypeName;
-      switch(theType) {
-        case BlockType::data_block:     theTypeName = "Data"; break;
-        case BlockType::free_block:     theTypeName = "Free"; break;
-        case BlockType::unknown_block:  theTypeName = "Unknown"; break;
-        case BlockType::meta_block:     theTypeName = "Meta"; break;
-      }
-      std::cout << "| " << std::setw(15) << std::left << theTypeName << "| " << std::setw(7) << std::left << theHeader.id << "|" << std::endl;
+    releaseDatabase();
+    activeDB = loadDatabase(aName);
+    if (activeDB){
+      DBView theView(output);
+      theView.dumpDB(aName);
     }
-    std::cout << "+----------------+--------+" << std::endl;
-    output << theBlockNum <<" rows in set (" << theTimer.elapsed() << " sec) " << std::endl;
     return StatusResult{ECE141::noError};
   }
 
@@ -234,9 +201,11 @@ namespace ECE141 {
       std::cout << "Database does not exist!" << std::endl;
       return StatusResult{Errors::unknownDatabase};
     }
+    Timer theTimer;
+    output << std::setprecision(3) << std::fixed;
     releaseDatabase();
     activeDB = loadDatabase(aName);
-    output << "Database changed" << std::endl;
+    output << "Database changed ("<< theTimer.elapsed() << " secs)" << std::endl;
     return StatusResult{ECE141::noError};
   }
 

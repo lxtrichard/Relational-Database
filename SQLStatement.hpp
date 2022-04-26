@@ -15,11 +15,10 @@ namespace ECE141 {
   class SQLStatement: public Statement {
   public:
     SQLStatement(SQLProcessor &aSQLProcessor, Keywords aStmtType);
-    SQLStatement(const Statement &aCopy);
     
-    virtual               ~SQLStatement();
+    ~SQLStatement(){};
     std::string           getTableName() {return thetableName;}
-    
+
     // StatusResult  parse(Tokenizer &aTokenizer);    
   protected:
     std::string thetableName;
@@ -37,7 +36,6 @@ namespace ECE141 {
       StatusResult  parseOptions(Tokenizer& aTokenizer, Attribute& anAttribute);
       StatusResult  getVarSize(Tokenizer& aTokenizer, Attribute& anAttribute);
 
-      StatusResult  run(std::ostream& aStream) const;
   protected:
       std::vector<Attribute> attributes;
   };
@@ -48,9 +46,7 @@ namespace ECE141 {
       ~ShowStatement(){};
 
       StatusResult  parse(Tokenizer& aTokenizer);
-      StatusResult  getVarSize(Tokenizer& aTokenizer, Attribute& anAttribute);
 
-      StatusResult  run(std::ostream& aStream) const;
   protected:
       std::vector<Attribute> attributes;
   };
@@ -61,9 +57,7 @@ namespace ECE141 {
       ~DescribeStatement(){};
 
       StatusResult  parse(Tokenizer& aTokenizer);
-      StatusResult  getVarSize(Tokenizer& aTokenizer, Attribute& anAttribute);
 
-      StatusResult  run(std::ostream& aStream) const;
   protected:
       std::vector<Attribute> attributes;
   };
@@ -74,11 +68,28 @@ namespace ECE141 {
       ~DropStatement(){};
 
       StatusResult  parse(Tokenizer& aTokenizer);
-      StatusResult  getVarSize(Tokenizer& aTokenizer, Attribute& anAttribute);
 
-      StatusResult  run(std::ostream& aStream) const;
   protected:
       std::vector<Attribute> attributes;
+  };
+
+  class InsertStatement : public SQLStatement {
+  public:
+      InsertStatement(SQLProcessor& aSQLProcessor);
+
+      ~InsertStatement() {}
+
+      StatusResult parse(Tokenizer& aTokenizer);
+
+      std::string getName() { return thetableName; }
+
+      std::vector<std::string>& getAttributes() { return theAttributeNames; }
+      std::vector<std::vector<std::string>>& getValues() { return values; }
+
+  protected:
+      std::vector<std::string> theAttributeNames;
+      std::vector<std::vector<std::string>> values;
+
   };
 }
 

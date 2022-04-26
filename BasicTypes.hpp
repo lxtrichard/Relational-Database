@@ -13,6 +13,8 @@
 #include <map>
 #include<optional>
 #include <vector>
+#include <iomanip>
+
 
 namespace ECE141 {
 
@@ -28,5 +30,6 @@ namespace ECE141 {
   using Value = std::variant<bool, int, double, std::string>;
   using KeyValues = std::map<const std::string, Value>;
   using KeyIndexes = std::map<const std::string, uint32_t>;
+  using RowIndexes = std::map<const std::string, std::vector<uint32_t>>;
 }
 #endif /* BasicTypes_h */
