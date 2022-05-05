@@ -6,7 +6,9 @@
 #include "Statement.hpp"
 #include "Attribute.hpp"
 #include <vector>
+#include <memory>
 #include "SQLProcessor.hpp"
+#include "DBQuery.hpp"
 
 namespace ECE141 {
   
@@ -14,82 +16,90 @@ namespace ECE141 {
   
   class SQLStatement: public Statement {
   public:
-    SQLStatement(SQLProcessor &aSQLProcessor, Keywords aStmtType);
+    SQLStatement(Keywords aStmtType);
     
     ~SQLStatement(){};
     std::string           getTableName() {return thetableName;}
+    std::vector<Attribute> getAttributes() {return attributes;}
 
     // StatusResult  parse(Tokenizer &aTokenizer);    
   protected:
     std::string thetableName;
-    SQLProcessor *theSQLProcessor;
+    std::vector<Attribute> attributes;
   };
 
   class CreateStatement : public SQLStatement {
   public:
-      CreateStatement(SQLProcessor& aSQLProcessor);
-      virtual                 ~CreateStatement();
-
+      CreateStatement() : SQLStatement(Keywords::create_kw) {};
+      ~CreateStatement(){};
       StatusResult  parse(Tokenizer& aTokenizer);
       StatusResult  parseAttributes(Tokenizer& aTokenizer);
       StatusResult  parseAttribute(Tokenizer& aTokenizer, Attribute& anAttribute);
       StatusResult  parseOptions(Tokenizer& aTokenizer, Attribute& anAttribute);
       StatusResult  getVarSize(Tokenizer& aTokenizer, Attribute& anAttribute);
-
-  protected:
-      std::vector<Attribute> attributes;
   };
   
   class ShowStatement : public SQLStatement {
   public:
-      ShowStatement(SQLProcessor& aSQLProcessor);
+      ShowStatement() : SQLStatement(Keywords::show_kw) {};
       ~ShowStatement(){};
 
       StatusResult  parse(Tokenizer& aTokenizer);
-
-  protected:
-      std::vector<Attribute> attributes;
   };
 
   class DescribeStatement : public SQLStatement {
   public:
-      DescribeStatement(SQLProcessor& aSQLProcessor);
+      DescribeStatement() : SQLStatement(Keywords::describe_kw) {};
       ~DescribeStatement(){};
 
       StatusResult  parse(Tokenizer& aTokenizer);
-
-  protected:
-      std::vector<Attribute> attributes;
   };
 
   class DropStatement : public SQLStatement {
   public:
-      DropStatement(SQLProcessor& aSQLProcessor);
+      DropStatement() : SQLStatement(Keywords::drop_kw) {};
       ~DropStatement(){};
 
       StatusResult  parse(Tokenizer& aTokenizer);
-
-  protected:
-      std::vector<Attribute> attributes;
   };
 
-  class InsertStatement : public SQLStatement {
+  class InsertStatement : public Statement {
   public:
-      InsertStatement(SQLProcessor& aSQLProcessor);
-
-      ~InsertStatement() {}
+      InsertStatement() : Statement(Keywords::insert_kw), thetableName("") {};
+      ~InsertStatement() {};
 
       StatusResult parse(Tokenizer& aTokenizer);
 
-      std::string getName() { return thetableName; }
-
-      std::vector<std::string>& getAttributes() { return theAttributeNames; }
-      std::vector<std::vector<std::string>>& getValues() { return values; }
+      std::string                             getTableName() {return thetableName;}
+      std::vector<std::string>&               getAttributes() { return theAttributeNames; }
+      std::vector<std::vector<std::string>>&  getValues() { return values; }
 
   protected:
-      std::vector<std::string> theAttributeNames;
-      std::vector<std::vector<std::string>> values;
+      std::string                             thetableName;
+      std::vector<std::string>                theAttributeNames;
+      std::vector<std::vector<std::string>>   values;
+  };
 
+  class SelectStatement : public Statement {
+  public:
+      SelectStatement() : Statement(Keywords::select_kw), theQuery(new DBQuery()) {};
+
+      ~SelectStatement() {};
+
+      StatusResult parse(Tokenizer& aTokenizer);
+      StatusResult parseClause(Keywords aKeyword, Tokenizer& aTokenizer);
+
+      std::shared_ptr<DBQuery>& getQuery() { return theQuery; }
+
+  protected:
+      StatusResult parseSelect(Tokenizer& aTokenizer);
+      StatusResult parseEntity(Tokenizer& aTokenizer);
+      StatusResult parseWhere(Tokenizer& aTokenizer);
+      StatusResult parseOrderBy(Tokenizer& aTokenizer);
+      StatusResult parseGroupBy(Tokenizer& aTokenizer);
+      StatusResult parseLimit(Tokenizer& aTokenizer);
+
+      std::shared_ptr<DBQuery> theQuery;
   };
 }
 

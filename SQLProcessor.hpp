@@ -39,6 +39,7 @@ namespace ECE141 {
     StatusResult  dropTable(Statement *aStmt);
     StatusResult  showTables();
     StatusResult  insertRows(Statement *anInsertStmt);
+    StatusResult selectRows(Statement *aSelectStmt);
 
     Database*     getActiveDB() {return activeDB;}
     SQLProcessor* setActiveDB(Database* aDB);

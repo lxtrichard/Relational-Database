@@ -1,9 +1,9 @@
-# SP22-Assignment5
-Selecting database rows
+# SP22-Assignment6
+Let's apply filters to our search queries.
 
-## Overview -- Let's Select Records!
+## Overview -- Applying Search Filters!
 
-In this assignment, we are going to implement code to handle "select" commands like, `SELECT * from Users`.  When run, this commmand will allow us to retrieve records from our database associated with a given table. This will build on the prior work we've been doing in previous assignments in the `SQLProcessor`, and `Entity` classes. 
+In this assignment, we are going to improve the `select` command to allow us to retrieve records from our database that meet specified search criteria. We'll also ORDER our data, and limit the number of rows we return.
 
 <hr>
 
@@ -11,98 +11,108 @@ In this assignment, we are going to implement code to handle "select" commands l
 
 You'll discover that the following classes are significant in this assignment:
 
-### The `Row` class
+### The `Filter` class
 
-As with the case of inserting records, we'll need a working version of our `Row` class to be able select records.
-
-### The `Rows` (or `RowCollection`) class
-
-The `Rows` class will contain 0 or more `Row` objects. This is what actully gets returned by your `Database` object when it performs a `select` command.  
-
-### The `SelectStatement` class
-
-The `SelectStatement` class will perform the common task of helping to parse `SELECT...` commands. You'll implement this class in a manner similar to the other statement classes you have built for previous assignments.   
-
-### The `Storage` class
-
-Since we don't yet have an index, we'll use the `Storage::each()` (visitor) function to iterate blocks in a DB file, and find `Block`s that are associated with a given table/entity. You've probably already used this method for the `DUMP` and `SHOW TABLES` commands. 
-
-### The `DBQuery` class
-
-The `Query`class is used to describe (and help exectute) `SELECT`, `UPDATE` and `DELETE` statements. 
-
-### The `TabularView` class
-
-A `TabularView` will be the class that shows a view  of a `RowCollection`  when a user issues `SELECT * ...` command. 
+This class helps us perform conditional logic on data when we perform a select. The `Filter` class can represent complex conditional logic, and validate whether a `Row` meets the conditions or not.
 
 <hr>
 
-## Integrating files from assignment #4 with this assignment
+## Integrating files from assignment #5 with this assignment
 
-To do this assignment, you will copy all your files from assignment#4 project folder into this folder. As before, do NOT overwrite the `main.cpp` file or the `TestAutomatica.hpp` file.
+To do this assignment, you will copy MOST your files from assignment#5 project folder into this folder. Please don't overwrite the following files:
+```
+main.cpp
+testAutomatic.hpp
+keywords.hpp
+Helpers.hpp
+compare.hpp
+Filters.*
+```
+
+If you've made your own changes to `Keywords` or `Helpers`, you may have to do a manual merge of the differences.
 
 <hr>
 
+## Implementing The `Filter` Class
 
-## Challenge #1 : Implement the `SelectStatement` class
+The `Filter` class provides support for conditional logic. We'll use it to perform the conditional checks in the `SELECT..WHERE` clause. The filter class can contain one or more `Expression` objects. An `Expression` contains two `Operands` and one logical `Operator` (e.g. first_name="Megan"). The purpose of this class is to determine whether a row meets the criteria given by the user. Consider the query:
 
-The `SELECT` command allows a user to retrieve (one or more) records from a given table. The command accepts one or more fields to be retrieved (or the wildcard `*`), along with a series of **optional** arguments (e.g. `ORDER BY`, `LIMIT`).  Below, are examples of the basic `SELECT` statement (presumes the existence of a `Users` and `Accounts` table): 
-    
 ```
-SELECT * from Accounts;
-SELECT first_name, last_name from Users order by last_name;
+SELECT * from Users where age>20 AND zipcode=92100 ORDER BY last_name;
 ```
 
-When a user issues a `SELECT...` command, you'll create as `SelectStatement` class and have it parse the underlying tokens to validate the command. Your `SelectStatement` class should store all of the associated state for the `SELECT` command in a `Query` object.  Assuming the parsing process is successful, you'll eventually call a `selectRows` method -- and pass the `Query` object as an argument. 
+The filter class in this case would contain two expressions (age>50) (zipcode=92100) and one logical operator (AND). Records from the `Users` table are loaded, and tested by the given Filter. If a row matches the expression criteria specified in the `Filter`, it will be added to the `RowCollection`.  
 
-For this challenge, your code must handle the following tasks:
+We've provided a starter version of the `Filter.hpp` file. You're free to use (or discard) this class. However you will need to implement a `Filter` class so that your code can properly filter records based on values set in the `SELECT` (or other) statements.
 
-1. Given a `SELECT` command - one of your processors should create an `SelectStatement`  object
-2. The `SelectStatement` should help parse and validate the input (example given above); validation includes insuring that the table specified in the command is a known table in the active `Database`.  The `SelectStatement` should construct a reusable `Query` object that contains all the state information specified in the select command. We will later use the `Query` object when we implement `UPDATE` and `DELETE` commands.
+> **NOTE**: The `Filter` class can handle basic expressions, but it doesn't (yet) know how to deal logically combining them (AND, OR, NOT).  You and your teammate need to add logic to the `Filter` class to support logically combining expressions. 
 
-## Challenge #2 : Implement `SQLProcessor::showQuery`
+### Implementing the Comparison Logic
 
-For this challenge, you'll implement the `SQLQuery::showQuery(const Query &aQuery, const RowCollection &aCollection)` method. We presume that your `SelectStatement` has successfully parsed the `SELECT...` command (and constructed a `Query` object). When the `SelectStatement` is run, it should dispatch to the `SQLProcessor::showQuery` method, and pass along the `Query` object.
+Also included in this assignment is a file called `Compare.hpp`.  This file provides template functions that implements the "Equals" comparision operator. While we have provided you starting code for the `Equal` condition, you must implement your own variations for the other logical operations (LessThan, GreaterThan, NotEqual, LessThanEqual, GreaterThanEqual,...). 
 
-1. Build a `RowCollection` by calling the `Database::selectRows` method.
-2. The `Database::selectRows` method will rely on the `Storage` class to retrieve rows for that table.  Since we don't have an index, we'll have to iterate all the `Blocks` in a DB file searching for "data blocks" that are associated with the given table. Use `Storage::each` for that purpose.
-3. Pass the `RowCollection` to a `TabularView` to present the collection to your user.
-5. If an **optional** "order by" clause was provided, sort the data before presenting to the user.
+<hr>
 
-## Challenge #3  : Implement `Database::selectRows` 
+## Implementing Commands for Assignment #6
 
-For this challenge, you'll implement the `Database::selectRows(const Query &aQuery, RowCollection &aRows)` method. We don't yet have a row index, so the task of selecting rows associated with a table will require that we iterate storage blocks. Fortunately, our `Storage` class provides the `Storage::each()` (visitor) method for cases of this nature. 
+### Challenge 1: Select...WHERE ... 
 
-For every data `block` you find in storage, verify that the block is associated with the table/entity specified in the `Query`. Decode each of these `Blocks` into a `Row` object, and store each of them in the `Rows` argument (type: `RowCollection`) passed to this method.
+This version of the `SELECT` command builds upon the work we've already done. In this case, however, we expect the the records to be filtered according to the given WHERE clause, using a `Filter` object.
 
-## Challenge #4 : Implement the `TabularView` class
+```
+SELECT * from Users where first_name="Anirudh";
+```
 
-In this challenge, you'll construct a `TabularView` to "show" the selected `Rows` to the user. Your `TabularView` should use the `RowCollection` you assembled in the `Database::selectRows()` method as the list of `Row` objects to show to the user. The `Query` object that was created by your `SelectStatement::parse` method can be used to determine which columns to present to the user in your `TabularView`. 
+For this task, your code must handle the following tasks:
 
-> **NOTE:** If you user specified an `ORDER BY` clause in the query, make sure to sort your `Rows` accordingly before presenting them to the user.
+1. Retrieve `Rows` as a `RowCollection` as you did for the basic `SELECT` case (above)
+2. Filter the collection of rows to exlude those that don't pass the conditional logic (using a `Filter`)
+3. Present the user data using your `TableView` class in the specified order
+
+
+> NOTE: You may be asked to handle these clauses in any combination or order. For example, you may be asked to retrieve N records and order them: `SELECT first_name, last_name from Users order by last_name LIMIT 3`
+
+### Challenge 2: Select...ORDER BY `fieldname`... 
+
+In this challenge, you'll handle ordering the resulting collection of Rows according to the "ORDER BY" field provided. Your database does not store data in an ordered format -- so we must do this step manually before we present the results to the user. 
+
+```
+SELECT last_name, email from Users ORDER BY age;
+```
+
+You'll only be asked to order data by a single field, and only in ascending order (smallest first).
+
+### Challenge 3: Select...LIMIT _N_... 
+
+In this version of the `SELECT` command we are also expected to limit the number of records retrieved. Assuming a table has 100 records, the `LIMIT` clause applies a limit of the total records retrieved, so we might only ask to retrieve N records.
+
+```
+SELECT last_name, email from Users LIMIT 5;
+```
+
+For this task, your code must handle the following tasks:
+
+1. Retrieve `Rows` as a `RowCollection` as you did for the basic `SELECT` case (above)
+2. Stop adding rows once you have reached the given LIMIT value
+3. Present the user data using your `TableView` 
 
 <hr>
 
 ## Testing This Assignment
 
-For our autograder, we're going to validate your `select` commands are working by retrieving records from a previously created table. Let's assume we already created a Users table and added 3 records. Next we'll issue the `SELECT` command:
+For our autograder, we're going to validate your `select` commands are working by retrieving records from a previously created table. Let's assume we create a Users table and add some records. Then we'll issue a command like:
 
 ```
-SELECT * from Users;
+> SELECT id, first_name, last_name, zipcode from Users where zipcode>92120 order by zipcode LIMIT 2
++--------------------+--------------+--------------+
+| id  | first_name   | last_name    | Zipcode      |
++-----+--------------+--------------+--------------+
+| 3   | Anirudh      | Swaninthan   | 92126        |
+| 1   | Pu           | Cheng        | 92127        |
++-----+--------------+--------------+--------------+
+2 rows in set (0.00123 sec)
 ```
 
-The output of your describe statement should show something like this:
-
-```
-> SELECT * from Users;
-+--------------------+--------------+
-| id  | first_name   | last_name    |
-+-----+--------------+--------------+
-| 1   | david        | he           |
-| 3   | rick         | gessner      |
-+-----+--------------+--------------+
-3 rows in set (0.00231 sec)
-```
 
 As always you can use the auto-grader to help get your code to perform as expected.
 
@@ -110,17 +120,15 @@ All of the tests for this assignment will be based on properly gathering the cor
 
 #### Grading
 ```
-- Commpile Test 4pts
-- App Test 4pts
-- DB Test 4pts
-- Tables Test 4pts
-- Insert Test 4pts
-- Select Test 80pts
+- Commpile Test 10pts
+- Tables Test 10pts
+- Insert Test 25pts
+- Select Test 55pts
 ```
 
 ## Submitting Your Work
-#### Due Wednesday, May 7, 2022 at 11:30pm
+#### Due Tuesday, May 10, 2022 at 11:30pm
 
-Make sure your code compiles, and meets the requirements given above. Also make sure you updated your students.json file with the name of each contributor. Also make sure that your "version" statement outputs "version 0.5". 
+Make sure your code compiles, and meets the requirements given above. Also make sure you updated your students.json file with the name of each contributor. Also make sure that your "version" statement outputs "version 0.6".  Check your work into git as usual. (If you aren't using the command line version of git by now...it's time you start).
 
-
+Good luck! 

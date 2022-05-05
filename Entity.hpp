@@ -34,6 +34,7 @@ namespace ECE141 {
                           ~Entity() {};
     
     const std::string&    getName() const {return name;}
+    uint32_t              hashString();
         
     const AttributeList&  getAttributes() const {return attributes;}
     Entity&               addAttribute(const Attribute &anAttribute);

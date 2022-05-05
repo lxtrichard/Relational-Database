@@ -1,0 +1,26 @@
+make.exe --dry-run --always-make --keep-going --print-directory
+make: Entering directory 'd:/University/Study Abroad/UCSD/course work/Spring 2022/ECE 141B/assignment/Relational-Database'
+g++ -g -std=c++17 -Wall -pedantic   -c -o Application.o Application.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o Attribute.o Attribute.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o BlockIO.o BlockIO.cpp
+ 
+g++ -g -std=c++17 -Wall -pedantic   -c -o CmdProcessor.o CmdProcessor.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o DBProcessor.o DBProcessor.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o DBQuery.o DBQuery.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o Database.o Database.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o Entity.o Entity.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o Faked.o Faked.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o Filters.o Filters.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o ParseHelper.o ParseHelper.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o Row.o Row.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o SQLProcessor.o SQLProcessor.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o SQLStatement.o SQLStatement.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o Statement.o Statement.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o Storage.o Storage.cpp
+ 
+g++ -g -std=c++17 -Wall -pedantic   -c -o TabularView.o TabularView.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o Tokenizer.o Tokenizer.cpp
+g++ -g -std=c++17 -Wall -pedantic   -c -o main.o main.cpp
+g++ -o pa6 Application.o Attribute.o BlockIO.o CmdProcessor.o DBProcessor.o DBQuery.o Database.o Entity.o Faked.o Filters.o ParseHelper.o Row.o SQLProcessor.o SQLStatement.o Statement.o Storage.o TabularView.o Tokenizer.o main.o
+make: Leaving directory 'd:/University/Study Abroad/UCSD/course work/Spring 2022/ECE 141B/assignment/Relational-Database'
+ 

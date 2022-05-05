@@ -11,6 +11,10 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <initializer_list>
+#include <algorithm>
+#include <random>
+
 #include "Application.hpp"
 #include "AboutUs.hpp"
 #include "Errors.hpp"
@@ -118,13 +122,13 @@ namespace ECE141 {
     TestAutomatic(std::ostream &anOutput) : output(anOutput) {}
     
     ~TestAutomatic() {std::cout << "Test Version 1.4\n";}
-
     
     void addUsersTable(std::ostream &anOutput) {
       anOutput << "create table Users (";
       anOutput << " id int NOT NULL auto_increment primary key,";
       anOutput << " first_name varchar(50) NOT NULL,";
       anOutput << " last_name varchar(50),";
+      anOutput << " age int,";
       anOutput << " zipcode int);\n";
     }
 
@@ -197,7 +201,7 @@ namespace ECE141 {
       if(theResult) {
         const char* theLines[]={
           theInput.c_str(),
-          "Version 0.5", "Help system available",
+          "Version 0.6", "Help system available",
           "DB::141 is shutting down"
         };
         
@@ -255,7 +259,7 @@ namespace ECE141 {
           else if(theSeq.clear().nextIs({Keywords::use_kw})) {
             static KWList dbChanged{Keywords::database_kw,Keywords::changed_kw};
             if(theSeq.skip(2).nextIs(dbChanged)) {
-              aResults.push_back({Commands::useDB, 1});
+              aResults.push_back({Commands::useDB, 0});
             }
           }
           else if(theSeq.clear().nextIs(dropDB)) {
@@ -310,7 +314,7 @@ namespace ECE141 {
               theSeq.clear().skipPast(')');
             }
           }
-          else theTokenizer.next(); //skip the token...
+          else theTokenizer.next(); //skip...
         }
       }
       return aResults.size();
@@ -455,17 +459,22 @@ namespace ECE141 {
       return theResult;
     }
           
-  void insertUsers(std::ostream &anOut,
-                   size_t anOffset, size_t aLimit) {
+  void insertUsers(std::ostream &anOut, size_t anOffset, size_t aLimit) {
     static const char* kUsers[]={
-      " (\"terry\",  \"pratchett\", 92124)",
-      " (\"ian\",    \"tregellis\", 92123)",
-      " (\"jody\",   \"taylor\",    92120)",
-      " (\"stephen\",\"king\",      92125)",
-      " (\"ted\",    \"chiang\",    92120)"
+      " (\"Terry\",     \"Pratchett\", 70,  92124)",
+      " (\"Ian\",       \"Tregellis\", 48,  92123)",
+      " (\"Jody\",      \"Taylor\",    50,  92120)",
+      " (\"Stephen\",   \"King\",      74,  92125)",
+      " (\"Ted\",       \"Chiang\",    56,  92120)"
+      " (\"Anthony\",   \"Doerr\",     52,  92122)",
+      " (\"J.R.R.\",    \"Tolkien\",   130, 92126)",
+      " (\"Aurthur C.\",\"Clarke\",    105, 92127)",
+      " (\"Seldon\",    \"Edwards\",   81,  92128)",
+      " (\"Neal\",      \"Stephenson\",62,  92121)"
     };
     
-    anOut<<"INSERT INTO Users (first_name, last_name, zipcode)";
+
+    anOut<<"INSERT INTO Users (first_name, last_name, age, zipcode)";
     
     size_t theSize=sizeof(kUsers)/sizeof(char*);
     size_t theLimit=std::min(theSize, anOffset+aLimit);
@@ -558,11 +567,11 @@ namespace ECE141 {
         auto theCount=analyzeOutput(theOutput1,theResponses);
              
         Expected theExpected({
-          {Commands::createDB,1},    {Commands::useDB,1},
+          {Commands::createDB,1},    {Commands::useDB,0},
           {Commands::createTable,1}, {Commands::createTable,1},
           {Commands::createTable,1}, {Commands::showTables,3},
           {Commands::describe,3},    {Commands::dropTable,1},
-          {Commands::showTables,3},  {Commands::dropDB,1},
+          {Commands::showTables,2},  {Commands::dropDB,1},
         });
      
         if(!theCount || !(theExpected==theResponses)) {
@@ -601,7 +610,7 @@ namespace ECE141 {
         auto theCount=analyzeOutput(theOutput,theResponses);
              
         Expected theExpected({
-          {Commands::createDB,1},    {Commands::useDB,1},
+          {Commands::createDB,1},    {Commands::useDB,0},
           {Commands::createTable,1}, {Commands::insert,2},
           {Commands::showTables,1},  {Commands::dumpDB,3,'>'},
           {Commands::dropDB,0},
@@ -615,6 +624,21 @@ namespace ECE141 {
       return theResult;
     }
     
+    std::string getUserSelect(const std::initializer_list<std::string> &aClauses) {
+      std::string theResult("SELECT * from Users ");
+      if(aClauses.size()) {
+        std::vector<std::string> theClauses(aClauses);
+        auto rd = std::random_device {};
+        auto rng = std::default_random_engine {rd()};
+        std::shuffle(theClauses.begin(), theClauses.end(), rng);
+        for(auto theClause : theClauses) {
+          theResult+=theClause;
+        }
+      }
+      theResult+=";\n";
+      return theResult;
+    }
+    
     bool doSelectTest() {
 
       std::stringstream theStream1;
@@ -623,9 +647,12 @@ namespace ECE141 {
       theStream1 << "use " << theDBName << ";\n";
       
       addUsersTable(theStream1);
-      insertUsers(theStream1,0,2);
-      
-      theStream1 << "select * from Users;\n";
+      insertUsers(theStream1,0,10);
+
+      theStream1 << getUserSelect({});//basic
+      theStream1 << getUserSelect({" order by zipcode"," where zipcode>92122"," limit 3"});
+      theStream1 << "select first_name, last_name from Users order by last_name where age>40;\n";
+
       theStream1 << "show tables;\n";
       theStream1 << "dump database " << theDBName << ";\n";
       theStream1 << "drop database " << theDBName << ";\n";
@@ -638,18 +665,19 @@ namespace ECE141 {
    
         std::string tempStr=theOutput.str();
         output << "output \n" << tempStr << "\n";
-        //std::cout << tempStr << "\n";
+       // std::cout << tempStr << "\n";
         
         Responses theResponses;
         auto theCount=analyzeOutput(theOutput,theResponses);
         
         Expected theExpected({
-          {Commands::createDB,1},    {Commands::useDB,1},
-          {Commands::createTable,1}, {Commands::insert,2},
-          {Commands::select,2},      {Commands::showTables,1},
+          {Commands::createDB,1},    {Commands::useDB,0},
+          {Commands::createTable,1}, {Commands::insert,10},
+          {Commands::select,10},     {Commands::select,3},
+          {Commands::select,3},
+          {Commands::showTables,1},
           {Commands::dumpDB,3,'>'},  {Commands::dropDB,0},
         });
-        // static CountList theExpected{1,0,2,2,1,4};
 
         if(!theCount || !(theExpected==theResponses)) {
           theResult=false;
@@ -682,4 +710,18 @@ namespace ECE141 {
 
 }
 
+
 #endif /* TestAutomatic_h */
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -201,11 +201,10 @@ namespace ECE141 {
       std::cout << "Database does not exist!" << std::endl;
       return StatusResult{Errors::unknownDatabase};
     }
-    Timer theTimer;
     output << std::setprecision(3) << std::fixed;
     releaseDatabase();
     activeDB = loadDatabase(aName);
-    output << "Database changed ("<< theTimer.elapsed() << " secs)" << std::endl;
+    output << "Database changed" << std::endl;
     return StatusResult{ECE141::noError};
   }
 

@@ -5,13 +5,9 @@
 
 namespace ECE141
 {
-  SQLStatement::SQLStatement(SQLProcessor &aSQLProcessor, Keywords aStmtType) : Statement(aStmtType), theSQLProcessor(&aSQLProcessor){}
+  SQLStatement::SQLStatement(Keywords aStmtType) : Statement(aStmtType){}
 
-
-  CreateStatement::CreateStatement(SQLProcessor &aSQLProcessor) : 
-  SQLStatement(aSQLProcessor, Keywords::create_kw) {}
-
-  CreateStatement::~CreateStatement(){}
+  // ---------------  CreateStatement  -------------------- //
 
   StatusResult CreateStatement::parse(Tokenizer &aTokenizer){
     Token &theToken = aTokenizer.peek(1);
@@ -22,14 +18,7 @@ namespace ECE141
         thetableName = theToken.data;
         if (aTokenizer.skipIf('(')){
           StatusResult theResult = parseAttributes(aTokenizer);
-          if (theResult){
-            Entity *theEntity = new Entity(thetableName);
-            for (auto attribute : attributes){
-              theEntity->addAttribute(attribute);
-            }
-            theSQLProcessor->setEntity(theEntity);
-            return theResult;
-          }
+          return theResult;
         }
       }
     }
@@ -186,10 +175,8 @@ namespace ECE141
     }
     return StatusResult{Errors::syntaxError};
   };
-  
-  ShowStatement::ShowStatement(SQLProcessor &aSQLProcessor) : 
-    SQLStatement(aSQLProcessor, Keywords::show_kw) {}
 
+  // ---------------  ShowStatement  -------------------- //
   StatusResult ShowStatement::parse(Tokenizer &aTokenizer){
     Token &theToken = aTokenizer.peek(1);
     if (theToken.keyword == Keywords::tables_kw){
@@ -199,9 +186,7 @@ namespace ECE141
     return StatusResult{Errors::unknownCommand};
   }
 
-  DescribeStatement::DescribeStatement(SQLProcessor &aSQLProcessor) : 
-    SQLStatement(aSQLProcessor, Keywords::describe_kw) {}
-
+  // ---------------  DescribeStatement  ------------------ //
   StatusResult DescribeStatement::parse(Tokenizer &aTokenizer){
     Token &theToken = aTokenizer.peek(1);
     if (theToken.type == TokenType::identifier){
@@ -212,9 +197,7 @@ namespace ECE141
     return StatusResult{Errors::unknownCommand};
   }
 
-  DropStatement::DropStatement(SQLProcessor &aSQLProcessor) : 
-    SQLStatement(aSQLProcessor, Keywords::drop_kw) {}
-
+  // ---------------  DropStatement  ------------------ //
   StatusResult DropStatement::parse(Tokenizer &aTokenizer){
     Token &theToken = aTokenizer.peek(1);
     if (theToken.keyword == Keywords::table_kw){
@@ -228,9 +211,7 @@ namespace ECE141
     return StatusResult{Errors::unknownCommand};
   }
 
-  InsertStatement::InsertStatement(SQLProcessor &aSQLProcessor) : 
-  SQLStatement(aSQLProcessor, Keywords::insert_kw) {}
-
+  // ---------------  InsertStatement  ------------------ //
   StatusResult InsertStatement::parse(Tokenizer &aTokenizer){
     int anIndex = 3;
     Token &theToken = aTokenizer.peek(1);
@@ -334,4 +315,88 @@ namespace ECE141
     return StatusResult{Errors::noError};
   }
 
+  // ---------------  SelectStatement  ------------------ //
+  StatusResult SelectStatement::parse(Tokenizer &aTokenizer){
+    StatusResult theResult = StatusResult{Errors::noError};
+    // Parse Select
+    theResult = parseSelect(aTokenizer);
+    if (!theResult)
+      return theResult;
+    // Parse Entity Name
+    theResult = parseEntity(aTokenizer);
+    while (aTokenizer.current().data[0]!=';'){
+      Keywords theKeyword = aTokenizer.current().keyword;
+      parseClause(theKeyword, aTokenizer);
+    }
+    return StatusResult{Errors::noError};
+  }
+
+  StatusResult SelectStatement::parseSelect(Tokenizer& aTokenizer){
+    if (!aTokenizer.skipIf(Keywords::select_kw))
+      return StatusResult{Errors::keyExpected};
+
+    if (!aTokenizer.skipIf('*')){
+      while (aTokenizer.current().keyword != Keywords::from_kw){
+        if (aTokenizer.skipIf(','))
+          continue;
+        if (aTokenizer.current().type != TokenType::identifier)
+          return StatusResult{Errors::identifierExpected};
+
+        theQuery->setSelects(aTokenizer.current().data);
+        aTokenizer.next();
+      }
+    }
+    else{
+      theQuery->setSelectAll(true);
+      aTokenizer.skipTo(Keywords::from_kw);
+    }
+
+    return StatusResult{Errors::noError};
+  };
+
+  StatusResult SelectStatement::parseEntity(Tokenizer &aTokenizer){
+    aTokenizer.skipIf(Keywords::from_kw);
+    if (aTokenizer.current().type != TokenType::identifier)
+      return StatusResult{Errors::identifierExpected};
+    theQuery->setEntityName(aTokenizer.current().data);
+    aTokenizer.next();
+    return StatusResult{Errors::noError};
+  }
+  
+  StatusResult SelectStatement::parseClause(Keywords aKeyword, Tokenizer& aTokenizer){
+    using Clauseparser = StatusResult (SelectStatement::*)(Tokenizer&);
+    static std::map<Keywords, Clauseparser> theClauseMap = {
+      {Keywords::where_kw, &SelectStatement::parseWhere},
+      {Keywords::group_kw, &SelectStatement::parseGroupBy},
+      {Keywords::order_kw, &SelectStatement::parseOrderBy},
+      {Keywords::limit_kw, &SelectStatement::parseLimit}
+    };
+    if (theClauseMap.count(aKeyword)) {
+      return (this->*theClauseMap[aKeyword])(aTokenizer);
+    }
+    return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult SelectStatement::parseWhere(Tokenizer &aTokenizer){
+    return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult SelectStatement::parseGroupBy(Tokenizer &aTokenizer){
+    return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult SelectStatement::parseOrderBy(Tokenizer &aTokenizer){
+    if (aTokenizer.skipIf(Keywords::order_kw))
+      if (aTokenizer.skipIf(Keywords::by_kw))
+        if (aTokenizer.current().type == TokenType::identifier) {
+          theQuery->setOrderBy(aTokenizer.current().data);
+          aTokenizer.next();
+          return StatusResult{Errors::noError};
+        }
+    return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult SelectStatement::parseLimit(Tokenizer &aTokenizer){
+    return StatusResult{Errors::unknownCommand};
+  }
 } // namespace ECE141

@@ -45,6 +45,7 @@ namespace ECE141 {
                             const Value &aValue);
         
     KeyValues&          getData() {return data;}
+    Value               getValue(const std::string &aKey) {return data[aKey];};
     uint32_t            getBlockNumber() {return blockNumber;}
     
     //uint32_t            entityId; //hash value of entity?
@@ -60,7 +61,7 @@ namespace ECE141 {
   //-------------------------------------------
 
   using RowCollection = std::vector<std::unique_ptr<Row> >;
-
+  using OrderedRow = std::map<std::string, RowCollection>;
 
 }
 #endif /* Row_hpp */

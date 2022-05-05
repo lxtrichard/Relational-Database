@@ -20,6 +20,7 @@
 #include "Config.hpp"
 #include "FolderReader.hpp"
 #include "Timer.hpp"
+#include "Helpers.hpp"
 
 
 namespace ECE141 {
@@ -72,7 +73,6 @@ namespace ECE141 {
       stream.open(thePath, std::fstream::binary | std::fstream::in | std::fstream::out);
       uint32_t theBlockNum = theBlockIO.getBlockCount();
       for (size_t i = 0; i < theBlockNum; i++) {
-        size_t thePos = i * ECE141::kBlockSize;
         Block theBlock;
         theBlockIO.readBlock(i, theBlock);
         // convert blocktype into string

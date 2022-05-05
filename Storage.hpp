@@ -26,6 +26,7 @@ namespace ECE141 {
 
   //not required -- but we discussed in class...
   using BlockList = std::set<uint32_t>;
+  using BlockVisitor = std::function<bool(const Block&, uint32_t)>;
   const int32_t kNewBlock=-1;
   
   class Storable {
@@ -35,22 +36,27 @@ namespace ECE141 {
   };
   
   struct StorageInfo {
-    StorageInfo(size_t anId, size_t aSize, uint32_t aStart=0, BlockType aType=BlockType::data_block)
+    StorageInfo(uint32_t anId, size_t aSize, uint32_t aStart=0, BlockType aType=BlockType::data_block)
     : id(anId), size(aSize), start(aStart), type(aType)  {}
     uint32_t  start;
     size_t    size;
-    size_t    id;
+    uint32_t  id;
     BlockType type;
   };
 
+  struct BlockIterator {
+    virtual bool each(const BlockVisitor& aVisitor)=0;
+  };
+
   // USE: A storage class, might be helpful...
-  class Storage : public BlockIO {
+  class Storage : public BlockIO, public BlockIterator {
   public:
     Storage(std::iostream &aStream);
     ~Storage();
 
     StatusResult    save(std::iostream &aStream, StorageInfo &anInfo);
     StatusResult    load(std::iostream &aStream, uint32_t aStartBlockNum);
+    virtual bool    each(const BlockVisitor &aVisitor);
 
     StatusResult    releaseBlocks(uint32_t aBlockNum);
     uint32_t        getNextFreeBlock();

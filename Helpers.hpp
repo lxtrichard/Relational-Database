@@ -60,7 +60,7 @@ namespace ECE141 {
     ECE141::Keywords::cross_kw,ECE141::Keywords::full_kw, ECE141::Keywords::inner_kw,
     ECE141::Keywords::left_kw, ECE141::Keywords::right_kw
   };
-  
+
   //a list of known functions...
   static std::map<std::string,int> gFunctions = {
     std::make_pair("avg", 10),
@@ -103,6 +103,7 @@ namespace ECE141 {
     std::make_pair("distinct",  ECE141::Keywords::distinct_kw),
     std::make_pair("double",    ECE141::Keywords::double_kw),
     std::make_pair("drop",      ECE141::Keywords::drop_kw),
+    std::make_pair("dump",      ECE141::Keywords::dump_kw),
     std::make_pair("enum",      ECE141::Keywords::enum_kw),
     std::make_pair("explain",   ECE141::Keywords::explain_kw),
     std::make_pair("false",     ECE141::Keywords::false_kw),
@@ -168,13 +169,13 @@ namespace ECE141 {
     std::make_pair(Keywords::integer_kw, DataTypes::int_type),
     std::make_pair(Keywords::varchar_kw, DataTypes::varchar_type)
   };
-  
+
   
   class Helpers {
   public:
         
     //be very careful about collisions!
-    static size_t hashString(const char *str) {
+    static uint32_t hashString(const char *str) {
       uint32_t h{0};
       unsigned char *p;
       const int gMultiplier = 37;
@@ -211,6 +212,7 @@ namespace ECE141 {
         case DataTypes::float_type:     return "float";
         case DataTypes::int_type:       return "int";
         case DataTypes::varchar_type:   return "varchar";
+        default: return nullptr;
       }
     }
     
@@ -290,6 +292,10 @@ namespace ECE141 {
       return false;
     }
 
+    // static std::string QueryOk(size_t aCount, size_t anElapsed) {
+    //   return formatString("Query Ok, {0} rows affected ({1} secs)\n",
+    //                       aCount, anElapsed);
+    // }
     static std::string getCurrentTime() {
       std::time_t now = time(0);            
             
@@ -315,7 +321,7 @@ namespace ECE141 {
       return res;
     }
   };
-  
-  
+    
 }
+
 #endif /* Helpers_h */

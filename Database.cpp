@@ -61,7 +61,7 @@ namespace ECE141 {
         std::stringstream ss1;
         entity.encode(ss1);
         size_t pos = theTableIndexes[entity.getName()];
-        StorageInfo info(pos, ss1.str().size(), pos, BlockType::entity_block);
+        StorageInfo info(entity.hashString(), ss1.str().size(), pos, BlockType::entity_block);
         theStorage.save(ss1, info);
       }
     }
@@ -88,7 +88,7 @@ namespace ECE141 {
 
     std::stringstream ss;
     anEntity.encode(ss);
-    StorageInfo info(blockNum, ss.str().size(), blockNum, BlockType::entity_block);
+    StorageInfo info(anEntity.hashString(), ss.str().size(), blockNum, BlockType::entity_block);
     theStorage.save(ss, info);
 
     anOutput << "Query OK, 1 row affected (" <<  theTimer.elapsed() << " sec)" << std::endl;
@@ -193,6 +193,7 @@ namespace ECE141 {
                 const std::vector<std::string> anAttributeNames, 
                 const std::vector<std::vector<std::string>>& aValues){
     Timer theTimer;
+    anOutput << std::setprecision(3) << std::fixed;
     Entity* theTable = getEntity(aName);
     if (!theTable) {
       return StatusResult{Errors::unknownTable};
@@ -200,6 +201,7 @@ namespace ECE141 {
     std::vector<KeyValues> theKeyValueList(aValues.size());
     buildKeyValueList(theKeyValueList, theTable, anAttributeNames, aValues);
     int RowAffected = 0;
+    uint32_t theTableHash = theTable->hashString();
     for (auto& keyvalue : theKeyValueList) {
       uint32_t blockNum = theStorage.getNextFreeBlock();
       int id = theTable->getIncrement();
@@ -209,7 +211,7 @@ namespace ECE141 {
       theRowIndexes[theTable->getName()].push_back(blockNum);
       std::stringstream ss;
       theRow.encode(ss);
-      StorageInfo info(blockNum, ss.str().size(), kNewBlock, BlockType::data_block);
+      StorageInfo info(theTableHash, ss.str().size(), kNewBlock, BlockType::data_block);
       theStorage.save(ss, info);
       RowAffected += 1;
     }
@@ -218,6 +220,31 @@ namespace ECE141 {
     return StatusResult{noError};
   }
 
+  StatusResult Database::selectRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery){
+    Timer theTimer;
+    anOutput << std::setprecision(3) << std::fixed;
+    Entity *anEntity = getEntity(aQuery->getEntityName());
+    aQuery->setEntity(anEntity);
+    uint32_t theHashStr = anEntity->hashString();
+    RowCollection theRowCollection;
+    // get all data blocks for the entity
+    theStorage.each([&theRowCollection, theHashStr](const Block& theBlock, uint32_t theIdx)->bool{
+      if (theBlock.header.type == static_cast<char>(BlockType::data_block))
+        if (theBlock.header.id == theHashStr){
+          std::stringstream ss;
+          ss.write(theBlock.payload, theBlock.header.size);
+          std::unique_ptr<Row> theRow(new Row());
+          theRow->decode(ss);
+          theRowCollection.push_back(std::move(theRow));
+        }
+      return true;
+    });
+
+    TabularView theView(anOutput);
+    theView.show(aQuery, theRowCollection);
+    anOutput << theRowCollection.size() << " rows in set (" << theTimer.elapsed() << " sec)\n";
+    return StatusResult{noError};
+  };
 
 
   StatusResult Database::encode(std::ostream &aWriter) {

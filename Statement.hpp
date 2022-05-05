@@ -26,7 +26,7 @@ namespace ECE141 {
     virtual   StatusResult  parse(Tokenizer &aTokenizer);
     
     Keywords                getType() const {return stmtType;}
-    virtual   const char*   getStatementName() const {return "statement";}
+    // virtual   const char*   getStatementName() const {return "statement";}
     
   protected:
     Keywords   stmtType;    

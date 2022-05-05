@@ -15,6 +15,8 @@
 #include "Helpers.hpp"
 #include "View.hpp"
 #include "Row.hpp"
+#include "DBQuery.hpp"
+#include "TabularView.hpp"
 
 namespace ECE141 {
 
@@ -37,6 +39,7 @@ namespace ECE141 {
                       const std::string &aName,
                       const std::vector<std::string> anAttributeNames, 
                       const std::vector<std::vector<std::string>>& aValues);
+    StatusResult    selectRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery);
 
     StatusResult    encode(std::ostream &aWriter) override;
     StatusResult    decode(std::istream &aReader) override;

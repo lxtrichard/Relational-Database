@@ -23,6 +23,16 @@ namespace ECE141 {
   Storage::~Storage() {
   }
 
+  bool Storage::each(const BlockVisitor &aVisitor) {
+    uint32_t blockCount = getBlockCount();
+    Block theBlock;
+    for (uint32_t i = 0; i < blockCount; i++) {
+      readBlock(i, theBlock);
+      aVisitor(theBlock, i);
+    }
+    return true;
+  }
+
   uint32_t Storage::getNextFreeBlock(){
     uint32_t res = getBlockCount();
     if (availBlocks.size() > 0) {

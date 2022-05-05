@@ -37,25 +37,26 @@ namespace ECE141 {
       return nullptr;
     }
     Keywords theKeyword = aTokenizer.current().keyword;
-    switch (theKeyword)
-    {
-    case Keywords::create_kw: theStatement = new CreateStatement(*this); break;
-    case Keywords::show_kw: theStatement = new ShowStatement(*this); break;
-    case Keywords::describe_kw: theStatement = new DescribeStatement(*this); break;
-    case Keywords::drop_kw: theStatement = new DropStatement(*this); break;
-    case Keywords::insert_kw: theStatement = new InsertStatement(*this); break;
-    default: break;
+    // Define a factory of Statement objects
+    std::map<Keywords, std::function<Statement* ()>> theStmtFactory{
+      {Keywords::create_kw,   [&]() { return new CreateStatement();}},            
+      {Keywords::show_kw,     [&]() { return new ShowStatement();}},
+      {Keywords::describe_kw, [&]() { return new DescribeStatement();}},
+      {Keywords::drop_kw,     [&]() { return new DropStatement(); }},
+      {Keywords::insert_kw,   [&]() { return new InsertStatement(); }},
+      {Keywords::select_kw,   [&]() { return new SelectStatement(); }}
+    };
+    if (theStmtFactory.count(theKeyword)) {
+      theStatement = theStmtFactory[theKeyword]();
     }
     if (theStatement) {
       StatusResult theResult = theStatement->parse(aTokenizer);
-      if (!theResult) {
-        delete theStatement;
-        theStatement = nullptr;
+      if (theResult) {
+        return this;
       }
     }
-    if (theStatement) {
-      return this;
-    }
+    delete theStatement;
+    theStatement = nullptr;
     return nullptr;
   }
 
@@ -66,16 +67,12 @@ namespace ECE141 {
 
   StatusResult  SQLProcessor::run(Statement *aStmt) {
     switch (aStmt->getType()) {
-      case Keywords::create_kw:
-        return createTable(aStmt);
-      case Keywords::describe_kw:
-        return describeTable(aStmt);
-      case Keywords::drop_kw:
-        return dropTable(aStmt);
-      case Keywords::show_kw:
-        return showTables();
-      case Keywords::insert_kw:
-        return insertRows(aStmt);
+      case Keywords::create_kw:     return createTable(aStmt);
+      case Keywords::describe_kw:   return describeTable(aStmt);
+      case Keywords::drop_kw:       return dropTable(aStmt);
+      case Keywords::show_kw:       return showTables();
+      case Keywords::insert_kw:     return insertRows(aStmt);
+      case Keywords::select_kw:     return selectRows(aStmt);
       default: break;
     }
     return StatusResult{ Errors::notImplemented };
@@ -83,6 +80,10 @@ namespace ECE141 {
 
   StatusResult  SQLProcessor::createTable(Statement *aStmt){
     SQLStatement *theStatement = dynamic_cast<SQLStatement*>(aStmt);
+    theEntity = new Entity(theStatement->getTableName());
+    for (auto& attr : theStatement->getAttributes()) {
+      theEntity->addAttribute(attr);
+    }
     if (activeDB) {
       return activeDB->createTable(output, *theEntity);
     }
@@ -118,9 +119,17 @@ namespace ECE141 {
     InsertStatement* theStatement = dynamic_cast<InsertStatement*>(aStmt);
     if (activeDB) {
       return activeDB->insertRows(output, 
-                        theStatement->getTableName(),
-                        theStatement->getAttributes(),
-                        theStatement->getValues());
+                theStatement->getTableName(),
+                theStatement->getAttributes(),
+                theStatement->getValues());
+    }
+    return StatusResult{ Errors::noError };
+  }
+
+  StatusResult  SQLProcessor::selectRows(Statement * aStmt){
+    SelectStatement* theStatement = dynamic_cast<SelectStatement*>(aStmt);
+    if (activeDB) {
+     return activeDB->selectRows(output, theStatement->getQuery());
     }
     return StatusResult{ Errors::noError };
   }

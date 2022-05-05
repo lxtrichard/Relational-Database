@@ -17,6 +17,7 @@
 #include <string>
 #include "View.hpp"
 #include "Row.hpp"
+#include "DBQuery.hpp"
 
 namespace ECE141 {
 
@@ -26,44 +27,18 @@ namespace ECE141 {
   // USE: general tabular view (with columns)
   class TabularView : public View {
   public:
-    
-    TabularView(std::ostream &anOutput) {}
-              
-    // USE: create header for tablular view...
-    TabularView& showHeader() {
-      return *this;
-    }
-    
-    // USE: create header for tablular view...
-    TabularView& showFooter() {
-      return *this;
-    }
-    
-    // USE: this function shows all the fields in a row...
-    TabularView& showRow(Row &aRow) {
-      return *this;
-    }
-        
-    // USE: this is the main show() for the view, where it presents all the rows...
-    bool show() {
-      std::string theSeparator=getSeparator();
-      
-      showHeader();
-      for(auto &theRow : rows) {
-        showRow(*theRow);
-      }
-      showFooter();
-      anOutput << rows.size() << " rows in set ("
-        << std::fixed << elapsed << " sec.)\n";
-      return true;
-    }
+    TabularView(std::ostream &anOutput);
+
+    ~TabularView() {}
+
+    TabularView& showSeparator(std::shared_ptr<DBQuery>& aQuery);
+    TabularView& showHeader(std::shared_ptr<DBQuery>& aQuery);
+    TabularView& showRow(std::shared_ptr<DBQuery>& aQuery, std::unique_ptr<Row>& aRow);
+
+    bool show(std::shared_ptr<DBQuery>& aQuery, RowCollection &aRows);
     
   protected:
-    //Entity              &entity; //if necessary?
-    RowCollection       &rows;
-    std::string         separator;
-    std::vector<int>    widths;
-    std::ostream        &output;
+    std::map<std::string, size_t>     widths;
   };
 
 }

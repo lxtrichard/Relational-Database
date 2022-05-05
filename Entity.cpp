@@ -26,6 +26,16 @@ namespace ECE141 {
       attributes.push_back(attr);
     }
   }
+
+  uint32_t Entity::hashString() {
+    const char * str = name.c_str();
+    uint32_t h{0};
+    unsigned char *p;
+    const int gMultiplier = 37;
+    for (p = (unsigned char*)str; *p != '\0'; p++)
+      h = gMultiplier * h + *p;
+    return h;
+  }
  
   Entity& Entity::addAttribute(const Attribute &anAttribute) {
     if(!getAttribute(anAttribute.getName())) {
