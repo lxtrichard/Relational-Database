@@ -59,7 +59,7 @@ namespace ECE141 {
       return theResult;
     }
     
-    std::string readUntil(char aTerminalChar, bool addTerminal=true) {
+    std::string readUntil(char aTerminalChar, bool addTerminal=false) {
       std::string theResult;
       while (!input.eof()) {
         char theChar=input.get();

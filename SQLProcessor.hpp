@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include "CmdProcessor.hpp"
 #include "Tokenizer.hpp"
+#include "Database.hpp"
 
 namespace ECE141 {
 
@@ -39,7 +40,7 @@ namespace ECE141 {
     StatusResult  dropTable(Statement *aStmt);
     StatusResult  showTables();
     StatusResult  insertRows(Statement *anInsertStmt);
-    StatusResult selectRows(Statement *aSelectStmt);
+    StatusResult  selectRows(Statement *aSelectStmt);
 
     Database*     getActiveDB() {return activeDB;}
     SQLProcessor* setActiveDB(Database* aDB);

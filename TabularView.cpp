@@ -18,9 +18,8 @@ namespace ECE141{
 
     for (auto& row : aCollection) {
       std::stringstream ss;
-      ss << row->getValue(orderBy);
-      std::string key = ss.str();
-      anOrderedRow[key].push_back(std::move(row));
+      Value aValue = row->getValue(orderBy);
+      anOrderedRow[aValue].push_back(std::move(row));
     }
   }
   

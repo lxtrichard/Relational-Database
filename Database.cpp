@@ -224,18 +224,23 @@ namespace ECE141 {
     Timer theTimer;
     anOutput << std::setprecision(3) << std::fixed;
     Entity *anEntity = getEntity(aQuery->getEntityName());
-    aQuery->setEntity(anEntity);
     uint32_t theHashStr = anEntity->hashString();
     RowCollection theRowCollection;
+    uint32_t theCount = 0;
     // get all data blocks for the entity
-    theStorage.each([&theRowCollection, theHashStr](const Block& theBlock, uint32_t theIdx)->bool{
-      if (theBlock.header.type == static_cast<char>(BlockType::data_block))
+    theStorage.each([&theRowCollection, &aQuery, theHashStr, &theCount]
+                (const Block& theBlock, uint32_t theIdx)->bool
+    {
+      if (theBlock.header.type == static_cast<char>(BlockType::data_block) && theCount < aQuery->getLimit())
         if (theBlock.header.id == theHashStr){
           std::stringstream ss;
           ss.write(theBlock.payload, theBlock.header.size);
           std::unique_ptr<Row> theRow(new Row());
           theRow->decode(ss);
-          theRowCollection.push_back(std::move(theRow));
+          if (aQuery->matches(theRow->getData())){
+            theRowCollection.push_back(std::move(theRow));
+            ++theCount;
+          }
         }
       return true;
     });

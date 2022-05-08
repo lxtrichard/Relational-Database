@@ -33,7 +33,6 @@ namespace ECE141 {
     
     ~Row();
     
-    Row& operator=(const Row &aRow);
     bool operator==(Row &aCopy) const;
     
       //STUDENT: What other methods do you require?
@@ -61,7 +60,7 @@ namespace ECE141 {
   //-------------------------------------------
 
   using RowCollection = std::vector<std::unique_ptr<Row> >;
-  using OrderedRow = std::map<std::string, RowCollection>;
+  using OrderedRow = std::map<Value, RowCollection>;
 
 }
 #endif /* Row_hpp */

@@ -2,6 +2,7 @@
 #include "Tokenizer.hpp"
 #include "Entity.hpp"
 #include "Helpers.hpp"
+#include "Database.hpp"
 
 namespace ECE141
 {
@@ -228,9 +229,6 @@ namespace ECE141
           while(aTokenizer.peek(anIndex).data[0]!=')') {
             ++anIndex;
 
-            if(aTokenizer.peek(anIndex).data[0]=='\"') {
-              anIndex++;
-            }
             if(aTokenizer.peek(anIndex).type != TokenType::identifier) {
               return StatusResult{Errors::invalidArguments};
             }
@@ -238,10 +236,6 @@ namespace ECE141
             theToken = aTokenizer.peek(anIndex);
             theAttributeNames.push_back(theToken.data);
             anIndex++;
-
-            if(aTokenizer.peek(anIndex).data[0]=='\"') {
-              anIndex++;
-            }
 
             if(aTokenizer.peek(anIndex).data[0]==')') {
               break;
@@ -267,9 +261,6 @@ namespace ECE141
             anIndex++;
             std::vector<std::string> theValueNames;
             while(aTokenizer.peek(anIndex).data[0]!=')') {
-              if(aTokenizer.peek(anIndex).data[0]=='\"') {
-                anIndex++;
-              }
               
               if(aTokenizer.peek(anIndex).type != TokenType::identifier && aTokenizer.peek(anIndex).type != TokenType::number) {
                 return StatusResult{Errors::invalidArguments};
@@ -278,9 +269,6 @@ namespace ECE141
               theValueNames.push_back(theToken.data);
 
               anIndex++;
-              if(aTokenizer.peek(anIndex).data[0]=='\"') {
-                anIndex++;
-              }
               
               if(aTokenizer.peek(anIndex).data[0]==')') {
                 break;
@@ -303,10 +291,9 @@ namespace ECE141
             if(aTokenizer.peek(anIndex).data[0]==';') {
               break;
             }
-            if (aTokenizer.peek(anIndex).data[0]!=',') {
-              return StatusResult{Errors::unknownCommand};
+            if (aTokenizer.peek(anIndex).data[0]==',') {
+              anIndex++;
             }
-            anIndex++;
           } 
         }
       }
@@ -316,6 +303,9 @@ namespace ECE141
   }
 
   // ---------------  SelectStatement  ------------------ //
+  SelectStatement::SelectStatement(Database* aDB) : theDB(aDB), 
+        Statement(Keywords::select_kw), theQuery(new DBQuery()) {};
+
   StatusResult SelectStatement::parse(Tokenizer &aTokenizer){
     StatusResult theResult = StatusResult{Errors::noError};
     // Parse Select
@@ -324,9 +314,11 @@ namespace ECE141
       return theResult;
     // Parse Entity Name
     theResult = parseEntity(aTokenizer);
-    while (aTokenizer.current().data[0]!=';'){
+    while (aTokenizer.more() && aTokenizer.current().data[0]!=';'){
       Keywords theKeyword = aTokenizer.current().keyword;
-      parseClause(theKeyword, aTokenizer);
+      theResult = parseClause(theKeyword, aTokenizer);
+      if (!theResult)
+        return theResult;
     }
     return StatusResult{Errors::noError};
   }
@@ -359,6 +351,8 @@ namespace ECE141
     if (aTokenizer.current().type != TokenType::identifier)
       return StatusResult{Errors::identifierExpected};
     theQuery->setEntityName(aTokenizer.current().data);
+    Entity *anEntity = theDB->getEntity(aTokenizer.current().data);
+    theQuery->setEntity(anEntity);
     aTokenizer.next();
     return StatusResult{Errors::noError};
   }
@@ -378,7 +372,9 @@ namespace ECE141
   }
 
   StatusResult SelectStatement::parseWhere(Tokenizer &aTokenizer){
-    return StatusResult{Errors::unknownCommand};
+    aTokenizer.skipIf(Keywords::where_kw);
+    StatusResult theResult = theQuery->parseFilters(aTokenizer);
+    return theResult;
   }
 
   StatusResult SelectStatement::parseGroupBy(Tokenizer &aTokenizer){
@@ -388,15 +384,23 @@ namespace ECE141
   StatusResult SelectStatement::parseOrderBy(Tokenizer &aTokenizer){
     if (aTokenizer.skipIf(Keywords::order_kw))
       if (aTokenizer.skipIf(Keywords::by_kw))
+      {
         if (aTokenizer.current().type == TokenType::identifier) {
           theQuery->setOrderBy(aTokenizer.current().data);
           aTokenizer.next();
           return StatusResult{Errors::noError};
         }
+      }
     return StatusResult{Errors::unknownCommand};
   }
 
   StatusResult SelectStatement::parseLimit(Tokenizer &aTokenizer){
+    aTokenizer.skipIf(Keywords::limit_kw);
+    if (aTokenizer.current().type == TokenType::number) {
+      theQuery->setLimit(std::stoi(aTokenizer.current().data));
+      aTokenizer.next();
+      return StatusResult{Errors::noError};
+    }
     return StatusResult{Errors::unknownCommand};
   }
 } // namespace ECE141

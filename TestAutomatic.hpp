@@ -465,7 +465,7 @@ namespace ECE141 {
       " (\"Ian\",       \"Tregellis\", 48,  92123)",
       " (\"Jody\",      \"Taylor\",    50,  92120)",
       " (\"Stephen\",   \"King\",      74,  92125)",
-      " (\"Ted\",       \"Chiang\",    56,  92120)"
+      " (\"Ted\",       \"Chiang\",    56,  92120)",
       " (\"Anthony\",   \"Doerr\",     52,  92122)",
       " (\"J.R.R.\",    \"Tolkien\",   130, 92126)",
       " (\"Aurthur C.\",\"Clarke\",    105, 92127)",
@@ -665,7 +665,7 @@ namespace ECE141 {
    
         std::string tempStr=theOutput.str();
         output << "output \n" << tempStr << "\n";
-       // std::cout << tempStr << "\n";
+        //std::cout << tempStr << "\n";
         
         Responses theResponses;
         auto theCount=analyzeOutput(theOutput,theResponses);

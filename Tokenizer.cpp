@@ -39,7 +39,7 @@ namespace ECE141 {
   }
 
   bool isPunctuation(char aChar) {
-    return strchr("()[]{}:;,\"", aChar);
+    return strchr("()[]{}:;,", aChar);
   }
 
   bool isUnknown(char aChar) {

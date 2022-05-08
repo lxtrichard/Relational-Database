@@ -9,6 +9,7 @@
 #include "Row.hpp"
 #include "Entity.hpp"
 #include "Tokenizer.hpp"
+#include "Filters.hpp"
 
 namespace ECE141
 {
@@ -26,6 +27,7 @@ namespace ECE141
     std::string getEntityName() { return theEntityName; };
     Entity*     getEntity() { return theEntity; };
     std::string getOrderBy() { return theOrderBy; };
+    uint32_t    getLimit() { return theLimit; };
 
     // setters
     DBQuery& setSelectAll(bool aValue);
@@ -33,13 +35,20 @@ namespace ECE141
     DBQuery& setEntityName(const std::string &aName);
     DBQuery& setEntity(Entity *aEntity);
     DBQuery& setOrderBy(const std::string &aField);
+    DBQuery& setLimit(uint32_t aLimit);
+
+    // filters
+    StatusResult parseFilters(Tokenizer& aTokenizer);
+    bool         matches(KeyValues &aList);
 
   protected:
+    bool        isAll;
     std::string theEntityName;
     Entity*     theEntity;
     StringList  theAttNames;
-    bool        isAll;
     std::string theOrderBy;
+    Filters     theFilters;
+    uint32_t    theLimit;
   };
 } // namespace ECE141
 

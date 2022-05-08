@@ -41,12 +41,13 @@ namespace ECE141 {
     Operand     lhs;  //id
     Operand     rhs;  //usually a constant; maybe a field...
     Operators   op;   //=     //users.id=books.author_id
-    Logical     logic; //and, or, not...
+    Logical     logic; //and, or...
+    bool        isNot; //is it a NOT?
     
     Expression(Operand &aLHSOperand, Operators anOp,
                Operand &aRHSOperand)
       : lhs(aLHSOperand), rhs(aRHSOperand),
-        op(anOp), logic(Logical::no_op) {}
+        op(anOp), logic(Logical::no_op), isNot(false) {}
     
     bool operator()(KeyValues &aList);
   };
@@ -64,6 +65,7 @@ namespace ECE141 {
     
     size_t        getCount() const {return expressions.size();}
     bool          matches(KeyValues &aList) const;
+    Logical       getLogic(Keywords aLogic);
     Filters&      add(Expression *anExpression);
         
     StatusResult  parse(Tokenizer &aTokenizer, Entity &anEntity);

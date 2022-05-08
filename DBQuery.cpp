@@ -1,8 +1,10 @@
 #include "DBQuery.hpp"
+#define UINT32_MAX  ((uint32_t)-1)
 
 namespace ECE141
 {
-  DBQuery::DBQuery() : theEntityName(""), isAll(false), theEntity(nullptr), theOrderBy("id") {}
+  DBQuery::DBQuery() : theEntityName(""), isAll(false), 
+      theEntity(nullptr), theOrderBy("id"), theLimit(UINT32_MAX) {}
 
   DBQuery::DBQuery(const DBQuery &aCopy) {
     *this = aCopy;
@@ -41,6 +43,19 @@ namespace ECE141
   DBQuery& DBQuery::setOrderBy(const std::string &aField){
     theOrderBy = aField;
     return *this;
+  }
+
+  DBQuery& DBQuery::setLimit(uint32_t aLimit){
+    theLimit = aLimit;
+    return *this;
+  }
+
+  StatusResult DBQuery::parseFilters(Tokenizer& aTokenizer){
+    return theFilters.parse(aTokenizer, *theEntity);
+  }
+
+  bool DBQuery::matches(KeyValues &aList){
+    return theFilters.matches(aList);
   }
 
 } // namespace ECE141

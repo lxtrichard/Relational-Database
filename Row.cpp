@@ -17,15 +17,10 @@
 
 namespace ECE141 {
   
-  Row::Row(const Row &aRow) {*this=aRow;}
+  Row::Row(const Row &aRow) : data(aRow.data), blockNumber(aRow.blockNumber) {}
 
   Row::~Row() {}
 
-  Row& Row::operator=(const Row &aRow) {
-    data = aRow.data;
-    blockNumber = aRow.blockNumber;
-    return *this;
-  }
   bool Row::operator==(Row &aCopy) const {return false;}
 
   //STUDENT: What other methods do you require?
@@ -58,7 +53,7 @@ namespace ECE141 {
 
   static std::ostream& operator<< (std::ostream& out, const Value& aValue) {
     std::visit([theType = vtype(aValue), &out](auto const& aValue)
-    { out << theType << ' ' << aValue; }, aValue);
+    { out << theType << ' ' << '\"' << aValue << '\"'; }, aValue);
     return out;
   }
   
@@ -66,7 +61,10 @@ namespace ECE141 {
     anOutput << blockNumber << " ";
     for (auto &i : data) {
       anOutput << i.first << " ";
-      anOutput << i.second << " ";
+      if (i.second.index() != 3)
+        anOutput << i.second << " ";
+      else
+        anOutput << i.second << " ";
     }
     return StatusResult();
   }
@@ -78,6 +76,18 @@ namespace ECE141 {
       return false;
   }
 
+  static std::string readValue(std::istream& aReader) {
+    std::string theRes = "";
+    aReader.get();
+    aReader.get();
+    while (!aReader.eof() && aReader.peek() != '\"') {
+      char ch = aReader.get();
+      theRes += ch;
+    }
+    aReader.get();
+    return theRes;
+  }
+
   StatusResult Row::decode(std::istream& aReader) {
     std::string temp;
     std::string key;
@@ -87,7 +97,8 @@ namespace ECE141 {
       key = temp;
       aReader >> temp;
       char theType = temp[0];
-      aReader >> temp;
+      //aReader >> temp;
+      temp = readValue(aReader);
       switch (theType) {
         case 'b':
           data[key] = stob(temp);

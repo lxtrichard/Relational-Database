@@ -44,7 +44,7 @@ namespace ECE141 {
       {Keywords::describe_kw, [&]() { return new DescribeStatement();}},
       {Keywords::drop_kw,     [&]() { return new DropStatement(); }},
       {Keywords::insert_kw,   [&]() { return new InsertStatement(); }},
-      {Keywords::select_kw,   [&]() { return new SelectStatement(); }}
+      {Keywords::select_kw,   [&]() { return new SelectStatement(activeDB); }}
     };
     if (theStmtFactory.count(theKeyword)) {
       theStatement = theStmtFactory[theKeyword]();

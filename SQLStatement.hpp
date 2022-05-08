@@ -1,12 +1,12 @@
 #ifndef SQLStatement_hpp
 #define SQLStatement_hpp
 
-#include "keywords.hpp"
 #include <iostream>
-#include "Statement.hpp"
-#include "Attribute.hpp"
 #include <vector>
 #include <memory>
+#include "keywords.hpp"
+#include "Statement.hpp"
+#include "Attribute.hpp"
 #include "SQLProcessor.hpp"
 #include "DBQuery.hpp"
 
@@ -82,7 +82,7 @@ namespace ECE141 {
 
   class SelectStatement : public Statement {
   public:
-      SelectStatement() : Statement(Keywords::select_kw), theQuery(new DBQuery()) {};
+      SelectStatement(Database* aDB);
 
       ~SelectStatement() {};
 
@@ -98,7 +98,7 @@ namespace ECE141 {
       StatusResult parseOrderBy(Tokenizer& aTokenizer);
       StatusResult parseGroupBy(Tokenizer& aTokenizer);
       StatusResult parseLimit(Tokenizer& aTokenizer);
-
+      Database     *theDB;
       std::shared_ptr<DBQuery> theQuery;
   };
 }
