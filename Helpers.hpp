@@ -275,6 +275,14 @@ namespace ECE141 {
       }
       return Operators::unknown_op;
     }
+
+    static bool isOperator(std::string aString){
+      auto theIter = gOperators.find(aString);
+      if (theIter != gOperators.end()) {
+        return true;
+      }
+      return false;
+    }
     
     static int getFunctionId(const std::string anIdentifier) {
       auto theIter = gFunctions.find(anIdentifier);

@@ -222,8 +222,13 @@ namespace ECE141 {
       if((theResult=parseOperand(aTokenizer,anEntity,theLHS))) {
         Token &theToken=aTokenizer.current();
         if(theToken.type==TokenType::operators) {
-          Operators theOp=Helpers::toOperator(theToken.data);
-          aTokenizer.next();
+          std::string anOP = "";
+          while (Helpers::isOperator(theToken.data)){
+            anOP += theToken.data;
+            aTokenizer.next();
+            theToken = aTokenizer.current();
+          }
+          Operators theOp=Helpers::toOperator(anOP);
           if((theResult=parseOperand(aTokenizer,anEntity,theRHS))) {
             if(validateOperands(theLHS, theRHS, anEntity)) {
               add(new Expression(theLHS, theOp, theRHS));
