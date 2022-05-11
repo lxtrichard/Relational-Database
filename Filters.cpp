@@ -223,7 +223,7 @@ namespace ECE141 {
         Token &theToken=aTokenizer.current();
         if(theToken.type==TokenType::operators) {
           std::string anOP = "";
-          while (Helpers::isOperator(theToken.data)){
+          while (theToken.type==TokenType::operators){
             anOP += theToken.data;
             aTokenizer.next();
             theToken = aTokenizer.current();

@@ -284,14 +284,6 @@ namespace ECE141 {
       return false;
     }
     
-    static int getFunctionId(const std::string anIdentifier) {
-      auto theIter = gFunctions.find(anIdentifier);
-      if (theIter != gFunctions.end()) {
-        return theIter->second;
-      }
-      return 0;
-    }
-    
     static bool isNumericKeyword(Keywords aKeyword) {
       static Keywords theTypes[]={Keywords::decimal_kw, Keywords::double_kw, Keywords::float_kw, Keywords::integer_kw};
       for(auto k : theTypes) {
