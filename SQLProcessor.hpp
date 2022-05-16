@@ -41,6 +41,8 @@ namespace ECE141 {
     StatusResult  showTables();
     StatusResult  insertRows(Statement *anInsertStmt);
     StatusResult  selectRows(Statement *aSelectStmt);
+    StatusResult  updateRows(Statement *anUpdateStmt);
+    StatusResult  deleteRows(Statement *aDeleteStmt);
 
     Database*     getActiveDB() {return activeDB;}
     SQLProcessor* setActiveDB(Database* aDB);

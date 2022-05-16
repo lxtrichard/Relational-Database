@@ -26,7 +26,7 @@ namespace ECE141 {
     StringOpt getName(size_t anIndex) const {
       //return name of student anIndex N (or nullopt)
       switch (anIndex) {
-        case 0: return "Xiangtian";
+        case 0: return "Xiangtian Li";
         case 1: return "Harshit Bhadani";
         default: return std::nullopt;
       }

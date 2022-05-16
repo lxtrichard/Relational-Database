@@ -44,7 +44,9 @@ namespace ECE141 {
       {Keywords::describe_kw, [&]() { return new DescribeStatement();}},
       {Keywords::drop_kw,     [&]() { return new DropStatement(); }},
       {Keywords::insert_kw,   [&]() { return new InsertStatement(); }},
-      {Keywords::select_kw,   [&]() { return new SelectStatement(activeDB); }}
+      {Keywords::select_kw,   [&]() { return new SelectStatement(activeDB); }},
+      {Keywords::update_kw,   [&]() { return new UpdateStatement(activeDB); }},
+      {Keywords::delete_kw,   [&]() { return new DeleteStatement(activeDB); }},
     };
     if (theStmtFactory.count(theKeyword)) {
       theStatement = theStmtFactory[theKeyword]();
@@ -73,6 +75,8 @@ namespace ECE141 {
       case Keywords::show_kw:       return showTables();
       case Keywords::insert_kw:     return insertRows(aStmt);
       case Keywords::select_kw:     return selectRows(aStmt);
+      case Keywords::update_kw:     return updateRows(aStmt);
+      case Keywords::delete_kw:     return deleteRows(aStmt);
       default: break;
     }
     return StatusResult{ Errors::notImplemented };
@@ -130,6 +134,23 @@ namespace ECE141 {
     SelectStatement* theStatement = dynamic_cast<SelectStatement*>(aStmt);
     if (activeDB) {
      return activeDB->selectRows(output, theStatement->getQuery());
+    }
+    return StatusResult{ Errors::noError };
+  }
+
+  StatusResult  SQLProcessor::updateRows(Statement * aStmt){
+    UpdateStatement* theStatement = dynamic_cast<UpdateStatement*>(aStmt);
+    if (activeDB) {
+      return activeDB->updateRows(output, theStatement->getQuery(), 
+                                  theStatement->getSet());
+    }
+    return StatusResult{ Errors::noError };
+  }
+
+  StatusResult  SQLProcessor::deleteRows(Statement * aStmt){
+    DeleteStatement* theStatement = dynamic_cast<DeleteStatement*>(aStmt);
+    if (activeDB) {
+      return activeDB->deleteRows(output, theStatement->getQuery());
     }
     return StatusResult{ Errors::noError };
   }

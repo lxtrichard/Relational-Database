@@ -101,6 +101,26 @@ namespace ECE141 {
       Database     *theDB;
       std::shared_ptr<DBQuery> theQuery;
   };
+
+  class UpdateStatement : public SelectStatement{
+  public:
+      UpdateStatement(Database* aDB) : SelectStatement(aDB){ stmtType = Keywords::update_kw; };
+      ~UpdateStatement() {};
+
+      StatusResult  parse(Tokenizer& aTokenizer);
+      StatusResult  parseSet(Tokenizer& aTokenizer);
+      KeyValues&    getSet() { return theSet; }
+  protected:
+      KeyValues theSet;
+  };
+
+  class DeleteStatement : public SelectStatement{
+  public:
+      DeleteStatement(Database* aDB) : SelectStatement(aDB){ stmtType = Keywords::delete_kw; };
+      ~DeleteStatement() {};
+
+      StatusResult  parse(Tokenizer& aTokenizer);
+  };
 }
 
 #endif /* SQLStatement_hpp */

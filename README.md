@@ -1,9 +1,14 @@
-# SP22-Assignment6
-Let's apply filters to our search queries.
+# SP22-Assignment7
+## Overview -- Let's Update and Delete Records!
+### Due Tuesday - May 17, 2022 - 11:30pm 
 
-## Overview -- Applying Search Filters!
+In this assignment, we are going to implement the `update` and `delete` commands that will allow us to chanage records in our database. This will build on the prior work we've been doing in previous assignments.in the `SQLProcessor`, `Entity`, and `Database` classes.
 
-In this assignment, we are going to improve the `select` command to allow us to retrieve records from our database that meet specified search criteria. We'll also ORDER our data, and limit the number of rows we return.
+<hr>
+
+## Integrating files from assignment #6 with this assignment
+
+To do this assignment, you will copy all your files from assignment-#6 project folder into this folder.  Do not overwrite the `main.cpp` or `TestAutomatic.hpp`, or the `makefile`. 
 
 <hr>
 
@@ -11,124 +16,106 @@ In this assignment, we are going to improve the `select` command to allow us to 
 
 You'll discover that the following classes are significant in this assignment:
 
-### The `Filter` class
 
-This class helps us perform conditional logic on data when we perform a select. The `Filter` class can represent complex conditional logic, and validate whether a `Row` meets the conditions or not.
+### The `UpdateStatement` class
+
+```
+UPDATE Users set zipcode="12345" WHERE id=10;
+```
+
+Your team will create an `UpdateStatement` command, similar to the other commands you've created in your database. This statement will handle the `UPDATE` command. If you planned your code carefully, you can reuse parsing code you developed for the `SelectStatement` class to deal with the `WHERE` clause. 
+
+
+### The `DeleteStatement` class
+
+```
+DELETE FROM Users WHERE zipcode>92000;
+```
+
+Your team will implement the `DeleteStatement` command. Once again, you might consider how this command can take advantage of code you wrote for the `SelectStatement`. 
+
 
 <hr>
 
-## Integrating files from assignment #5 with this assignment
+## Implementing Commands for Assignment #7
 
-To do this assignment, you will copy MOST your files from assignment#5 project folder into this folder. Please don't overwrite the following files:
-```
-main.cpp
-testAutomatic.hpp
-keywords.hpp
-Helpers.hpp
-compare.hpp
-Filters.*
-```
+### Challenge #1:  The `UPDATE table` Command
 
-If you've made your own changes to `Keywords` or `Helpers`, you may have to do a manual merge of the differences.
-
-<hr>
-
-## Implementing The `Filter` Class
-
-The `Filter` class provides support for conditional logic. We'll use it to perform the conditional checks in the `SELECT..WHERE` clause. The filter class can contain one or more `Expression` objects. An `Expression` contains two `Operands` and one logical `Operator` (e.g. first_name="Megan"). The purpose of this class is to determine whether a row meets the criteria given by the user. Consider the query:
+The `UPDATE` command allows a user to select records from a given table, alter those records in memory, and save the records back out to the storage file.     
 
 ```
-SELECT * from Users where age>20 AND zipcode=92100 ORDER BY last_name;
+UPDATE Users SET "zipcode" = 92127 WHERE zipcode>92100;
 ```
 
-The filter class in this case would contain two expressions (age>50) (zipcode=92100) and one logical operator (AND). Records from the `Users` table are loaded, and tested by the given Filter. If a row matches the expression criteria specified in the `Filter`, it will be added to the `RowCollection`.  
+For this challenge, your code must handle the following tasks:
 
-We've provided a starter version of the `Filter.hpp` file. You're free to use (or discard) this class. However you will need to implement a `Filter` class so that your code can properly filter records based on values set in the `SELECT` (or other) statements.
-
-> **NOTE**: The `Filter` class can handle basic expressions, but it doesn't (yet) know how to deal logically combining them (AND, OR, NOT).  You and your teammate need to add logic to the `Filter` class to support logically combining expressions. 
-
-### Implementing the Comparison Logic
-
-Also included in this assignment is a file called `Compare.hpp`.  This file provides template functions that implements the "Equals" comparision operator. While we have provided you starting code for the `Equal` condition, you must implement your own variations for the other logical operations (LessThan, GreaterThan, NotEqual, LessThanEqual, GreaterThanEqual,...). 
-
-<hr>
-
-## Implementing Commands for Assignment #6
-
-### Challenge 1: Select...WHERE ... 
-
-This version of the `SELECT` command builds upon the work we've already done. In this case, however, we expect the the records to be filtered according to the given WHERE clause, using a `Filter` object.
+1. The `UpdateStatement` should parse and validate the input (example given above); validation includes insuring that the table specified in the command is a known table in the active database. It must also gather conditional filters.
+2. Assuming a valid statement and a known `Entity`, your processor(s) should route this command a `controller` object (e.g. `Database`) to be executed
+3. A controller class (maybe `Database`) will implement the `updateRows` method, where it will work with the `Storage` class to retrieve records in the given table that match the (optional) set of given `Filters`. 
+4. Iterate the selected records and change them according to given key/value pairs specified by user
+5. Store the updated `Rows` back into the database into their original block
+6. Provide output to the user indicating success or error of the command
 
 ```
-SELECT * from Users where first_name="Anirudh";
+UPDATE Users SET "zipcode" = 92127 WHERE zipcode>92100;
+Query Ok. 2 rows affected (0.000087 sec)
 ```
 
-For this task, your code must handle the following tasks:
-
-1. Retrieve `Rows` as a `RowCollection` as you did for the basic `SELECT` case (above)
-2. Filter the collection of rows to exlude those that don't pass the conditional logic (using a `Filter`)
-3. Present the user data using your `TableView` class in the specified order
+> NOTE: If the `UPDATE` statement doesn't include filters (`WHERE...`), the given changes will apply to every row in the table.
 
 
-> NOTE: You may be asked to handle these clauses in any combination or order. For example, you may be asked to retrieve N records and order them: `SELECT first_name, last_name from Users order by last_name LIMIT 3`
-
-### Challenge 2: Select...ORDER BY `fieldname`... 
-
-In this challenge, you'll handle ordering the resulting collection of Rows according to the "ORDER BY" field provided. Your database does not store data in an ordered format -- so we must do this step manually before we present the results to the user. 
+### Challenge #2:  The `DELETE FROM table WHERE..` command
 
 ```
-SELECT last_name, email from Users ORDER BY age;
+DELETE FROM Users WHERE zipcode>92000;
 ```
 
-You'll only be asked to order data by a single field, and only in ascending order (smallest first).
+The `DELETE` command allows a user to select records from a given table, and remove those rows from `Storage`.   When a user issues the `DELETE FROM...`  command, your system will find rows that match the given constraints (in the `WHERE` clause). Next, you will remove the associated rows from storage by marking the related data blocks as `FREE`.    
 
-### Challenge 3: Select...LIMIT _N_... 
+For this challenge, your code must handle the following tasks:
 
-In this version of the `SELECT` command we are also expected to limit the number of records retrieved. Assuming a table has 100 records, the `LIMIT` clause applies a limit of the total records retrieved, so we might only ask to retrieve N records.
+1. The `DeleteStatement` should parse and validate the input (example given above); validation includes insuring that the table specified in the command is a known table in the active database. It must also gather conditional filters.
+2. Assuming a valid statement and a known `Entity`, your processor(s) should route this command a `controller` object (e.g. `Database`) to be executed
+3. A controller class (maybe `Database`) will implement the `deleteRows` method to achieve the `DELETE` operation.
+5. Use the `Storage` class to mark the blocks associated with each selected row as `FREE`. 
+6. Provide output to the user indicating success or error of the command
 
 ```
-SELECT last_name, email from Users LIMIT 5;
+DELETE from Users where zipcode>92124;
+Query Ok. 1 rows affected (0.000023 sec)
 ```
 
-For this task, your code must handle the following tasks:
+> NOTE: If the user omits the `WHERE` clause, then you should delete _all the rows_ associated with the given table. 
 
-1. Retrieve `Rows` as a `RowCollection` as you did for the basic `SELECT` case (above)
-2. Stop adding rows once you have reached the given LIMIT value
-3. Present the user data using your `TableView` 
+### Challenge #3:  Updating the `DROP` table command
+
+Now  that we can delete rows from our database, we need to update our `DROP TABLE ...` command do delete any rows associated with the table we are dropping. Fortunately, we reuse our `DELETE FROM table` logic -- which will delete every row in the database associated with this table.  Assuming we have a "Users" table with 5 rows, your output will look list this (your time may vary):
+
+```
+drop table Users;
+Query Ok. 5 rows affected (0.000023 sec)
+```
+> Note:  If you carefully plan out the logic for your `DELETE FROM table...` command, you can reuse this logic to automatically delete all the rows associated with a table that you are dropping. 
 
 <hr>
 
 ## Testing This Assignment
 
-For our autograder, we're going to validate your `select` commands are working by retrieving records from a previously created table. Let's assume we create a Users table and add some records. Then we'll issue a command like:
+As always you can use the auto-grader to help get your code to perform as expected.  All of the tests for this assignment will be based on properly gathering the correct records (and number of records) for the given query. The queries won't be any more difficult than the ones shown above.
 
-```
-> SELECT id, first_name, last_name, zipcode from Users where zipcode>92120 order by zipcode LIMIT 2
-+--------------------+--------------+--------------+
-| id  | first_name   | last_name    | Zipcode      |
-+-----+--------------+--------------+--------------+
-| 3   | Anirudh      | Swaninthan   | 92126        |
-| 1   | Pu           | Cheng        | 92127        |
-+-----+--------------+--------------+--------------+
-2 rows in set (0.00123 sec)
-```
-
-
-As always you can use the auto-grader to help get your code to perform as expected.
-
-All of the tests for this assignment will be based on properly gathering the correct records (and number of records) for the given query. The queries won't be any more difficult than the ones shown above.
+> NOTE:  We have changed the testing system slightly. All the test names passed in command line arguments to `main.cpp` now start with an upper case letter (e.g. "Select" instead of "select"). This only matters if you're running these automated tests yourself.
 
 #### Grading
 ```
-- Commpile Test 10pts
-- Tables Test 10pts
-- Insert Test 25pts
-- Select Test 55pts
+- Insert Test 10pts
+- Select Test 10pts
+- Update Test 30pts
+- Delete Test 30pts
+- DropTtable Test 20pts
 ```
 
-## Submitting Your Work
-#### Due Tuesday, May 10, 2022 at 11:30pm
+## Turning in your work 
 
-Make sure your code compiles, and meets the requirements given above. Also make sure you updated your students.json file with the name of each contributor. Also make sure that your "version" statement outputs "version 0.6".  Check your work into git as usual. (If you aren't using the command line version of git by now...it's time you start).
+Make sure your code compiles, and meets the requirements given above.
 
-Good luck! 
+Submit your work by checking it into git by <b>Tuesday - May 17, 2022 - 11:30pm </b>. Good luck! 

@@ -83,7 +83,7 @@ namespace ECE141 {
     bool compare(const CommandCount &anItem) {
       if(command==anItem.command) {
         if('>'==cmp) return anItem.count>count;
-        return true;
+        return anItem.count==count;
       }
       return false;
     }
@@ -121,7 +121,7 @@ namespace ECE141 {
     
     TestAutomatic(std::ostream &anOutput) : output(anOutput) {}
     
-    ~TestAutomatic() {std::cout << "Test Version 1.4\n";}
+    ~TestAutomatic() {std::cout << "Test Version 1.9\n";}
     
     void addUsersTable(std::ostream &anOutput) {
       anOutput << "create table Users (";
@@ -201,7 +201,7 @@ namespace ECE141 {
       if(theResult) {
         const char* theLines[]={
           theInput.c_str(),
-          "Version 0.6", "Help system available",
+          "Version 0.7", "Help system available",
           "DB::141 is shutting down"
         };
         
@@ -311,6 +311,22 @@ namespace ECE141 {
               auto theToken=theTokenizer.peek(-1);
               theValue=std::stoi(theToken.data);
               aResults.push_back({Commands::select,theValue});
+              theSeq.clear().skipPast(')');
+            }
+          }
+          else if(theSeq.clear().nextIs({Keywords::update_kw})) {
+            if(theTokenizer.skipTo(Keywords::rows_kw)) {
+              auto theToken=theTokenizer.peek(-1);
+              theValue=std::stoi(theToken.data);
+              aResults.push_back({Commands::update,theValue});
+              theSeq.clear().skipPast(')');
+            }
+          }
+          else if(theSeq.clear().nextIs({Keywords::delete_kw})) {
+            if(theTokenizer.skipTo(Keywords::rows_kw)) {
+              auto theToken=theTokenizer.peek(-1);
+              theValue=std::stoi(theToken.data);
+              aResults.push_back({Commands::delet,theValue});
               theSeq.clear().skipPast(')');
             }
           }
@@ -571,7 +587,7 @@ namespace ECE141 {
           {Commands::createTable,1}, {Commands::createTable,1},
           {Commands::createTable,1}, {Commands::showTables,3},
           {Commands::describe,3},    {Commands::dropTable,1},
-          {Commands::showTables,2},  {Commands::dropDB,1},
+          {Commands::showTables,2},  {Commands::dropDB,0},
         });
      
         if(!theCount || !(theExpected==theResponses)) {
@@ -624,6 +640,125 @@ namespace ECE141 {
       return theResult;
     }
     
+    bool doUpdateTest() {
+
+      std::string theDBName1(getRandomDBName('E'));
+      std::string theDBName2(getRandomDBName('E'));
+
+      std::stringstream theStream1;
+      theStream1 << "create database " << theDBName2 << ";\n";
+      theStream1 << "create database " << theDBName1 << ";\n";
+      theStream1 << "use " << theDBName1 << ";\n";
+      
+      addUsersTable(theStream1);
+      insertUsers(theStream1,0,5);
+
+      theStream1 << "use " << theDBName2 << ";\n";
+      theStream1 << "drop database " << theDBName2 << ";\n";
+      theStream1 << "use " << theDBName1 << ";\n";
+
+      theStream1 << "select * from Users;\n";
+
+      std::string theZip(std::to_string(10000+rand()%75000));
+
+      theStream1 << "update Users set zipcode=" << theZip
+                 << " where id=5;\n";
+      
+      theStream1 << "select * from Users where zipcode="
+                 << theZip << ";\n";
+      
+      theStream1 << "drop database " << theDBName1 << ";\n";
+      theStream1 << "quit;\n";
+
+      std::string temp(theStream1.str());
+      std::stringstream theInput(temp);
+      std::stringstream theOutput;
+      bool theResult=doScriptTest(theInput,theOutput);
+      if(theResult) {
+   
+        std::string tempStr=theOutput.str();
+        output << "output \n" << tempStr << "\n";
+        //std::cout << tempStr << "\n";
+        
+        Responses theResponses;
+        auto theCount=analyzeOutput(theOutput,theResponses);
+        
+        Expected theExpected({
+          {Commands::createDB,1},     {Commands::createDB,1},
+          {Commands::useDB,0},        {Commands::createTable,1},
+          {Commands::insert,5},       {Commands::useDB,0},
+          {Commands::dropDB,0},       {Commands::useDB,0},
+          {Commands::select,5},       {Commands::update,1},
+          {Commands::select,1},       {Commands::dropDB,0}
+        });
+
+        if(!theCount || !(theExpected==theResponses)) {
+          theResult=false;
+        }
+      }
+      return theResult;
+    }
+
+    bool doDeleteTest() {
+
+      std::string theDBName1(getRandomDBName('F'));
+      std::string theDBName2(getRandomDBName('F'));
+
+      std::stringstream theStream1;
+      theStream1 << "create database " << theDBName2 << ";\n";
+      theStream1 << "create database " << theDBName1 << ";\n";
+      theStream1 << "use " << theDBName1 << ";\n";
+     
+      addUsersTable(theStream1);
+      insertUsers(theStream1,0,5);
+      
+      theStream1 << "use " << theDBName2 << ";\n";
+      theStream1 << "drop database " << theDBName2 << ";\n";
+      theStream1 << "use " << theDBName1 << ";\n";
+
+      theStream1 << "select * from Users;\n";
+
+      theStream1 << "DELETE from Users where zipcode=92120;\n";
+      theStream1 << "select * from Users\n";
+      theStream1 << "DELETE from Users where zipcode<92124;\n";
+      theStream1 << "select * from Users\n";
+      theStream1 << "DELETE from Users where zipcode>92124;\n";
+      theStream1 << "select * from Users\n";
+      theStream1 << "drop database " << theDBName1 << ";\n";
+      theStream1 << "quit;\n";
+
+      std::string temp(theStream1.str());
+      std::stringstream theInput(temp);
+      std::stringstream theOutput;
+      bool theResult=doScriptTest(theInput,theOutput);
+      if(theResult) {
+   
+        std::string tempStr=theOutput.str();
+        output << "output \n" << tempStr << "\n";
+        //std::cout << tempStr << "\n";
+        
+        Responses theResponses;
+        auto theCount=analyzeOutput(theOutput,theResponses);
+        
+        //XXX-HACK: fix me...
+        Expected theExpected({
+          {Commands::createDB,1},    {Commands::createDB,1},
+          {Commands::useDB,0},       {Commands::createTable,1},
+          {Commands::insert,5},      {Commands::useDB,0},
+          {Commands::dropDB,0},      {Commands::useDB,0},
+          {Commands::select,5},      {Commands::delet,2},
+          {Commands::select,3},      {Commands::delet,1},
+          {Commands::select,2},      {Commands::delet,1},
+          {Commands::select,1},      {Commands::dropDB,0},
+        });
+
+        if(!theCount || !(theExpected==theResponses)) {
+          theResult=false;
+        }
+      }
+      return theResult;
+    }
+    
     std::string getUserSelect(const std::initializer_list<std::string> &aClauses) {
       std::string theResult("SELECT * from Users ");
       if(aClauses.size()) {
@@ -651,7 +786,7 @@ namespace ECE141 {
 
       theStream1 << getUserSelect({});//basic
       theStream1 << getUserSelect({" order by zipcode"," where zipcode>92122"," limit 3"});
-      theStream1 << "select first_name, last_name from Users order by last_name where age>40;\n";
+      theStream1 << "select first_name, last_name from Users order by last_name where age>60;\n";
 
       theStream1 << "show tables;\n";
       theStream1 << "dump database " << theDBName << ";\n";
@@ -665,7 +800,7 @@ namespace ECE141 {
    
         std::string tempStr=theOutput.str();
         output << "output \n" << tempStr << "\n";
-        //std::cout << tempStr << "\n";
+       // std::cout << tempStr << "\n";
         
         Responses theResponses;
         auto theCount=analyzeOutput(theOutput,theResponses);
@@ -674,7 +809,7 @@ namespace ECE141 {
           {Commands::createDB,1},    {Commands::useDB,0},
           {Commands::createTable,1}, {Commands::insert,10},
           {Commands::select,10},     {Commands::select,3},
-          {Commands::select,3},
+          {Commands::select,6},
           {Commands::showTables,1},
           {Commands::dumpDB,3,'>'},  {Commands::dropDB,0},
         });
@@ -687,6 +822,53 @@ namespace ECE141 {
       return theResult;
     }
 
+    //test dropping a table...
+    bool doDropTest() {
+ 
+      std::string theDBName1(getRandomDBName('G'));
+
+      std::stringstream theStream1;
+      theStream1 << "create database " << theDBName1 << ";\n";
+      theStream1 << "use " << theDBName1 << ";\n";
+      
+      addAccountsTable(theStream1);
+      addUsersTable(theStream1);
+      insertUsers(theStream1,0,5);
+
+      theStream1 << "show tables\n";
+      theStream1 << "drop table Users;\n";
+      theStream1 << "show tables\n";
+      theStream1 << "drop database " << theDBName1 << ";\n";
+      
+      std::string temp(theStream1.str());
+      std::stringstream theInput(temp);
+      std::stringstream theOutput;
+      
+      bool theResult=doScriptTest(theInput,theOutput);      
+      if(theResult) {
+        std::string tempStr=theOutput.str();
+        output << "output \n" << tempStr << "\n";
+        //std::cout << tempStr << "\n";
+        
+        Responses theResponses;
+        auto theCount=analyzeOutput(theOutput,theResponses);
+        
+        Expected theExpected({
+          {Commands::createDB,1},    {Commands::useDB,0},
+          {Commands::createTable,1}, {Commands::createTable,1},
+          {Commands::insert,5},      {Commands::showTables,2},
+          {Commands::dropTable,5},   {Commands::showTables,1},
+          {Commands::dropDB,0},
+        });
+
+        if(!theCount || !(theExpected==theResponses)) {
+          theResult=false;
+        }
+    
+      }
+      return theResult;
+    }
+    
     bool doChangeTest() {
       bool theResult=false;
       return theResult;

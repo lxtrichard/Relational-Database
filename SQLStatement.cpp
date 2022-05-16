@@ -8,6 +8,13 @@ namespace ECE141
 {
   SQLStatement::SQLStatement(Keywords aStmtType) : Statement(aStmtType){}
 
+  static bool stob(std::string aStr) {
+    if (stoi(aStr))
+      return true;
+    else
+      return false;
+  }
+
   // ---------------  CreateStatement  -------------------- //
 
   StatusResult CreateStatement::parse(Tokenizer &aTokenizer){
@@ -403,4 +410,83 @@ namespace ECE141
     }
     return StatusResult{Errors::unknownCommand};
   }
+
+  // ---------------  UpdateStatement  ------------------ //
+  StatusResult UpdateStatement::parse(Tokenizer& aTokenizer){
+    StatusResult theResult = StatusResult{Errors::noError};
+    // Parse Update
+    if (!aTokenizer.skipIf(Keywords::update_kw))
+      return StatusResult{Errors::keyExpected};
+    // Parse Entity Name
+    theQuery->setEntityName(aTokenizer.current().data);
+    Entity *anEntity = theDB->getEntity(aTokenizer.current().data);
+    theQuery->setEntity(anEntity);
+    aTokenizer.next();
+    // Parse Set
+    if (!(theResult = parseSet(aTokenizer)))
+      return theResult;
+    // Parse Where
+    if (aTokenizer.current().keyword == Keywords::where_kw) {
+      if (!(theResult = parseWhere(aTokenizer)))
+        return theResult;
+    }
+    return StatusResult{Errors::noError};
+  }
+
+  StatusResult UpdateStatement::parseSet(Tokenizer& aTokenizer){
+    if (!aTokenizer.skipIf(Keywords::set_kw))
+      return StatusResult{Errors::keyExpected};
+    Entity *anEntity = theQuery->getEntity();
+
+    std::string theFieldName;
+    std::string theValue;
+    std::map<DataTypes, std::function<void()>> theMap = {
+      {DataTypes::bool_type,      [&]() { theSet.insert({theFieldName, stob(theValue)}); } },
+      {DataTypes::int_type,       [&]() { theSet.insert({theFieldName, std::stoi(theValue)}); } },
+      {DataTypes::float_type,     [&]() { theSet.insert({theFieldName, std::stod(theValue)}); } },
+      {DataTypes::varchar_type,   [&]() { theSet.insert({theFieldName, theValue}); } },
+      {DataTypes::datetime_type,  [&]() { theSet.insert({theFieldName, theValue}); } }
+    };
+
+    while (aTokenizer.current().type != TokenType::keyword && aTokenizer.current().data[0] != ';') {
+      theFieldName = aTokenizer.current().data;
+      aTokenizer.next();
+      // Check if field exists
+      const Attribute *anAttribute = anEntity->getAttribute(theFieldName);
+      if (anAttribute==nullptr)
+        return StatusResult{Errors::unknownAttribute};
+
+      if (!aTokenizer.skipIf('='))
+        return StatusResult{Errors::operatorExpected};
+      
+      if (aTokenizer.current().type != TokenType::number && 
+          aTokenizer.current().type != TokenType::identifier) {
+        return StatusResult{Errors::unexpectedValue};
+      }
+
+      theValue = aTokenizer.current().data;
+      aTokenizer.next();      
+
+      theMap[anAttribute->getType()]();      
+    }
+    return StatusResult{Errors::noError};
+  }
+
+  // ---------------  DeleteStatement  ------------------ //
+  StatusResult DeleteStatement::parse(Tokenizer& aTokenizer){
+    StatusResult theResult = StatusResult{Errors::noError};
+    // Parse Delete
+    if (!aTokenizer.skipIf(Keywords::delete_kw))
+      return StatusResult{Errors::keyExpected};
+    // Parse Entity Name
+    if (!(theResult = parseEntity(aTokenizer)))
+      return theResult;
+    // Parse Where
+    if (aTokenizer.current().keyword == Keywords::where_kw) {
+      if (!(theResult = parseWhere(aTokenizer)))
+        return theResult;
+    }
+    return StatusResult{Errors::noError};
+  }
+
 } // namespace ECE141

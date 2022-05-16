@@ -172,6 +172,8 @@ namespace ECE141 {
     output << std::setprecision(3) << std::fixed;
     std::string thePath = Config::getDBPath(aName);
     if (dbExists(aName)) {
+      if (activeDB->getName() == aName)
+        releaseDatabase();
       std::remove(thePath.c_str());
       output << "Query OK, 0 rows affected ("<< theTimer.elapsed() << " secs) " << std::endl;
       return StatusResult{Errors::noError};

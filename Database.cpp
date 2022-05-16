@@ -67,7 +67,13 @@ namespace ECE141 {
     }
     stream.close();
   }
- 
+  
+  static bool stob(std::string aStr) {
+    if (stoi(aStr))
+      return true;
+    else
+      return false;
+  }
 
   // USE: Call this to dump the db for debug purposes...
   StatusResult Database::dump(std::ostream &anOutput) {    
@@ -122,6 +128,15 @@ namespace ECE141 {
     if (!theTableIndexes.count(aName)) {
       return StatusResult{Errors::unknownTable};
     }
+    // remove the rows
+    std::shared_ptr<DBQuery> aQuery(new DBQuery());
+    aQuery->setEntityName(aName);
+    RowCollection theRowCollection = findRows(aQuery);
+    for (auto& theRow : theRowCollection) {
+      theStorage.releaseBlocks(theRow->getBlockNumber());
+    }
+
+    // remove the entity
     uint32_t blockNum = theTableIndexes[aName];
     theTableIndexes.erase(aName);
     for (size_t i = 0; i < theEntityList.size(); i++) {
@@ -132,11 +147,13 @@ namespace ECE141 {
     }
     theStorage.releaseBlocks(blockNum);
     changed = true;
+
+    // rewrite the meta block
     std::stringstream ss;
     this->encode(ss);
     StorageInfo info(0, ss.str().size(), 0, BlockType::meta_block);
     theStorage.save(ss, info);
-    anOutput << "Query OK, 1 rows affected (" << theTimer.elapsed() << " sec)" << std::endl;
+    anOutput << "Query OK, "<< theRowCollection.size() << " rows affected (" << theTimer.elapsed() << " sec)" << std::endl;
     return StatusResult{noError};
   }
 
@@ -147,13 +164,6 @@ namespace ECE141 {
       }
     }
     return nullptr;
-  }
-
-  static bool stob(std::string aStr) {
-    if (stoi(aStr))
-      return true;
-    else
-      return false;
   }
 
   static void buildKeyValueList(std::vector<KeyValues> &aList, 
@@ -220,9 +230,7 @@ namespace ECE141 {
     return StatusResult{noError};
   }
 
-  StatusResult Database::selectRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery){
-    Timer theTimer;
-    anOutput << std::setprecision(3) << std::fixed;
+  RowCollection Database::findRows(std::shared_ptr<DBQuery> aQuery){
     Entity *anEntity = getEntity(aQuery->getEntityName());
     uint32_t theHashStr = anEntity->hashString();
     RowCollection theRowCollection;
@@ -244,14 +252,66 @@ namespace ECE141 {
         }
       return true;
     });
+    return theRowCollection;
+  }
+
+  StatusResult Database::selectRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery){
+    Timer theTimer;
+    anOutput << std::setprecision(3) << std::fixed;
+
+    // find rows that match the query
+    RowCollection theRowCollection = findRows(aQuery);
 
     TabularView theView(anOutput);
     theView.show(aQuery, theRowCollection);
     anOutput << theRowCollection.size() << " rows in set (" << theTimer.elapsed() << " sec)\n";
     return StatusResult{noError};
-  };
+  }
+
+  StatusResult Database::updateRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery, KeyValues &anUpdateSet){
+    Timer theTimer;
+    anOutput << std::setprecision(3) << std::fixed;
+    Entity *anEntity = getEntity(aQuery->getEntityName());
+    uint32_t theHashStr = anEntity->hashString();
+    
+    // find rows that match the query
+    RowCollection theRowCollection = findRows(aQuery);
+
+    // update rows
+    for (auto& theRow : theRowCollection) {
+      for (auto& theKeyValue : anUpdateSet) {
+        theRow->setData(theKeyValue.first, theKeyValue.second);
+      }
+      std::stringstream ss;
+      theRow->encode(ss);
+      theStorage.releaseBlocks(theRow->getBlockNumber());
+      StorageInfo info(theHashStr, ss.str().size(), theRow->getBlockNumber(), BlockType::data_block);
+      theStorage.save(ss, info);
+    }
+    anOutput << "Query Ok. " << theRowCollection.size() << " rows in set (" << theTimer.elapsed() << " sec)\n";
+    changed = true;
+    return StatusResult{noError};
+  }
+  
+  StatusResult Database::deleteRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery){
+    Timer theTimer;
+    anOutput << std::setprecision(3) << std::fixed;
+
+    // find rows that match the query
+    RowCollection theRowCollection = findRows(aQuery);
+
+    // delete rows
+    for (auto& theRow : theRowCollection) {
+      theStorage.releaseBlocks(theRow->getBlockNumber());
+    }
+    anOutput << "Query Ok. " << theRowCollection.size() << " rows in set (" << theTimer.elapsed() << " sec)\n";
+    changed = true;
+    return StatusResult{noError};
+  }
 
 
+
+  // encode and decode
   StatusResult Database::encode(std::ostream &aWriter) {
     aWriter << name << ' ';
     for (auto& cur : theTableIndexes) {

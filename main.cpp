@@ -11,14 +11,19 @@
 #include <fstream>
 #include <map>
 #include <functional>
+#include <variant>
 
 #include "TestManually.hpp"
 #include "TestAutomatic.hpp"
 
+void doSomething() {
+  throw std::runtime_error("Something bad happened");
+}
+
 //----------------------------------------------
 
 int main(int argc, const char * argv[]) {
-        
+  
   srand(static_cast<uint32_t>(time(0)));
     
   if(argc>1) {
@@ -35,6 +40,9 @@ int main(int argc, const char * argv[]) {
       {"Tables",      [&](){return theTests.doTablesTest();}  },
       {"Insert",      [&](){return theTests.doInsertTest();}  },
       {"Select",      [&](){return theTests.doSelectTest();}  },
+      {"Update",      [&](){return theTests.doUpdateTest();}  },
+      {"Delete",      [&](){return theTests.doDeleteTest();}  },
+      {"DropTable",   [&](){return theTests.doDropTest();}  },
     };
     
     std::string theCmd(argv[1]);

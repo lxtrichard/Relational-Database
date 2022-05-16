@@ -275,13 +275,13 @@ namespace ECE141 {
       }
       return Operators::unknown_op;
     }
-
-    static bool isOperator(std::string aString){
-      auto theIter = gOperators.find(aString);
-      if (theIter != gOperators.end()) {
-        return true;
+    
+    static int getFunctionId(const std::string anIdentifier) {
+      auto theIter = gFunctions.find(anIdentifier);
+      if (theIter != gFunctions.end()) {
+        return theIter->second;
       }
-      return false;
+      return 0;
     }
     
     static bool isNumericKeyword(Keywords aKeyword) {
