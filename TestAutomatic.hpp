@@ -72,8 +72,8 @@ namespace ECE141 {
   }
 
   enum Commands {unknown, alter, createDB, createTable, describe,
-    delet, dropDB, dropTable, dumpDB, insert, select, showDBs, showTables,
-    update, useDB};
+    delet, dropDB, dropTable, dumpDB, insert, select, showDBs,
+    showTables, showIndex, showIndexes, update, useDB};
 
   struct CommandCount {
     Commands  command;
@@ -121,7 +121,7 @@ namespace ECE141 {
     
     TestAutomatic(std::ostream &anOutput) : output(anOutput) {}
     
-    ~TestAutomatic() {std::cout << "Test Version 1.9\n";}
+    ~TestAutomatic() {std::cout << "Test Version 1.93\n";}
     
     void addUsersTable(std::ostream &anOutput) {
       anOutput << "create table Users (";
@@ -201,7 +201,7 @@ namespace ECE141 {
       if(theResult) {
         const char* theLines[]={
           theInput.c_str(),
-          "Version 0.7", "Help system available",
+          "Version 0.9", "Help system available",
           "DB::141 is shutting down"
         };
         
@@ -501,19 +501,20 @@ namespace ECE141 {
     }
     anOut << ";\n";
   }
-        
+             
   void insertFakeUsers(std::ostream &anOut,
                        size_t aGroupSize,
-                       size_t aGroupCount) {
+                       size_t aGroupCount=1) {
     
     for(size_t theCount=0;theCount<aGroupCount;theCount++) {
-      anOut<<"INSERT INTO Users (first_name, last_name, zipcode) VALUES ";
+      anOut<<"INSERT INTO Users (first_name, last_name, age, zipcode) VALUES ";
       const char* thePrefix="";
       for(size_t theSize=0;theSize<aGroupSize;theSize++) {
         anOut << thePrefix <<
-          '(' << '"' << Fake::People::first_name() << "\"," <<
-          '"' << Fake::People::last_name() << "\"," <<
-          Fake::Places::zipcode() << ')';
+          '(' << '"' << Fake::People::first_name()
+          << "\", \"" << Fake::People::last_name()
+          << "\", " << Fake::People::age(20,60)
+          << ", " << Fake::Places::zipcode() << ')';
         thePrefix=",";
       }
       anOut << ";\n";
@@ -525,14 +526,14 @@ namespace ECE141 {
     static const char* kBooks[]={
       " (\"The Green Mile\",4)",
       " (\"The Stand\",4)",
-      " (\"The Misery\",4)",
+      " (\"Misery\",4)",
       " (\"11/22/63\",4)",
       " (\"The Institute\",4)",
-      " (\"The Thief of Time\",1)",
-      " (\"The Wintersmith\",1)",
-      " (\"The Monster Regiment\",1)",
+      " (\"Sorcerer\",1)",
+      " (\"Wintersmith\",1)",
+      " (\"Mort\",1)",
       " (\"Thud\",1)",
-      " (\"The Time Police\",3)",
+      " (\"Time Police\",3)",
       " (\"The Mechanical\",2)",
       " (\"The Liberation\",2)",
       " (\"The Rising\",2)",
@@ -607,7 +608,8 @@ namespace ECE141 {
       theStream1 << "use " << theDBName << ";\n";
       
       addUsersTable(theStream1);
-      insertUsers(theStream1,0,2);
+      insertUsers(theStream1,0,5);
+      insertFakeUsers(theStream1,50,2);
 
       theStream1 << "show tables;\n";
       theStream1 << "dump database " << theDBName << ";\n";
@@ -627,7 +629,8 @@ namespace ECE141 {
              
         Expected theExpected({
           {Commands::createDB,1},    {Commands::useDB,0},
-          {Commands::createTable,1}, {Commands::insert,2},
+          {Commands::createTable,1}, {Commands::insert,5},
+          {Commands::insert,50},     {Commands::insert,50},
           {Commands::showTables,1},  {Commands::dumpDB,3,'>'},
           {Commands::dropDB,0},
         });
@@ -786,7 +789,7 @@ namespace ECE141 {
 
       theStream1 << getUserSelect({});//basic
       theStream1 << getUserSelect({" order by zipcode"," where zipcode>92122"," limit 3"});
-      theStream1 << "select first_name, last_name from Users order by last_name where age>60;\n";
+      theStream1 << "select first_name, last_name, age from Users order by last_name where age>60;\n";
 
       theStream1 << "show tables;\n";
       theStream1 << "dump database " << theDBName << ";\n";
@@ -857,31 +860,117 @@ namespace ECE141 {
           {Commands::createDB,1},    {Commands::useDB,0},
           {Commands::createTable,1}, {Commands::createTable,1},
           {Commands::insert,5},      {Commands::showTables,2},
-          {Commands::dropTable,5},   {Commands::showTables,1},
+          {Commands::dropTable,6},   {Commands::showTables,1},
           {Commands::dropDB,0},
         });
 
         if(!theCount || !(theExpected==theResponses)) {
           theResult=false;
         }
-    
+      }
+      return theResult;
+    }
+        
+    bool doIndexTest() {
+      std::string theDBName1(getRandomDBName('H'));
+      std::string theDBName2(getRandomDBName('H'));
+      
+      //theDBName1="bar";
+      std::stringstream theStream1;
+      theStream1 << "create database " << theDBName2 << ";\n";
+      theStream1 << "create database " << theDBName1 << ";\n";
+      theStream1 << "use " << theDBName1 << ";\n";
+
+      addUsersTable(theStream1);
+      insertUsers(theStream1,0,5);
+
+      theStream1 << "use " << theDBName2 << ";\n";
+      theStream1 << "drop database " << theDBName2 << ";\n";
+      theStream1 << "use " << theDBName1 << ";\n";
+
+      insertFakeUsers(theStream1,30,2);
+
+      theStream1 << "show indexes;\n";
+      theStream1 << "show index id from Users;\n";
+      theStream1 << "drop database " << theDBName1 << ";\n";
+      theStream1 << "quit;\n";
+
+      std::string temp(theStream1.str());
+      std::stringstream theInput(temp);
+      std::stringstream theOutput;
+      
+      bool theResult=doScriptTest(theInput,theOutput);
+      if(theResult) {
+        std::string tempStr=theOutput.str();
+        output << "output \n" << tempStr << "\n";
+        //std::cout << tempStr << "\n";
+        Responses theResponses;
+        auto theCount=analyzeOutput(theOutput,theResponses);
+        
+        Expected theExpected({
+          {Commands::createDB,1},    {Commands::createDB,1},
+          {Commands::useDB,0},       {Commands::createTable,1},
+          {Commands::insert,5},      {Commands::useDB,0},
+          {Commands::dropTable,6},   {Commands::useDB,0},
+          {Commands::insert,30},     {Commands::insert,30},
+          {Commands::showIndexes,1}, {Commands::showIndex,60},
+          {Commands::dropDB,0},
+        });
+
+        if(!theCount || !(theExpected==theResponses)) {
+          theResult=false;
+        }
+        
       }
       return theResult;
     }
     
-    bool doChangeTest() {
-      bool theResult=false;
-      return theResult;
-    }
-
-    bool doIndexTest() {
-      bool theResult=false;
-      return theResult;
-    }
-    
+        
     bool doJoinTest() {
-      bool theResult=false;
+
+      std::string theDBName1(getRandomDBName('J'));
+      std::stringstream theStream1;
+      theStream1 << "create database " << theDBName1 << ";\n";
+      theStream1 << "use " << theDBName1 << ";\n";
+      
+      addUsersTable(theStream1);
+      insertUsers(theStream1,0,6);
+      addBooksTable(theStream1);
+      insertBooks(theStream1,0,14);
+
+      theStream1 << "select * from Users order by last_name;\n";
+
+      theStream1 << "select * from Books order by title;\n";
+
+      theStream1 << "select first_name, last_name, title from Users left join Books on Users.id=Books.user_id order by last_name;\n";
+      
+      theStream1 << "drop database " << theDBName1 << ";\n";
+      theStream1 << "quit;\n";
+      
+      std::stringstream theInput(theStream1.str());
+      std::stringstream theOutput;
+      
+      bool theResult=doScriptTest(theInput,theOutput);
+      if(theResult) {
+        std::string tempStr=theOutput.str();
+        output << "output \n" << tempStr << "\n";
+        //std::cout << tempStr << "\n";
+        
+        Responses theResponses;
+        size_t theCount=analyzeOutput(theOutput,theResponses);
+        Expected theExpected({
+          {Commands::createDB,1},    {Commands::useDB,0},
+          {Commands::createTable,1}, {Commands::insert,6},
+          {Commands::createTable,1}, {Commands::insert,14},
+          {Commands::select,6},      {Commands::select,14},
+          {Commands::select,15},     {Commands::dropDB,0},
+        });
+        if(!theCount || !(theExpected==theResponses)) {
+          theResult=false;
+        }
+      }
       return theResult;
+      
     }
 
     bool doCacheTest() {
@@ -892,16 +981,7 @@ namespace ECE141 {
 
 }
 
-
 #endif /* TestAutomatic_h */
-
-
-
-
-
-
-
-
 
 
 

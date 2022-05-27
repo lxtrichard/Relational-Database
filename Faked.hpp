@@ -33,6 +33,7 @@ namespace ECE141 {
     
     struct Counting {
       static int         integer(size_t maxdigits);
+      static size_t      range(size_t aMin, size_t aMax);
       static double      real(size_t maxdigits);
       static std::string spoken(size_t maxdigits);
       static std::string nth();
@@ -59,6 +60,7 @@ namespace ECE141 {
       static std::string full_name();
       static std::string email();
       static std::string mobile();
+      static size_t      age(size_t aMin, size_t aMax);
       static void autoTest(std::ostream &anOut, size_t aCount=100);
     };
     

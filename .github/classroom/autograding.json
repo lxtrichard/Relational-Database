@@ -1,0 +1,64 @@
+{
+  "tests": [
+    {
+      "name": "Insert test",
+      "setup": "make",
+      "run": "./pa9 Insert",
+      "input": "",
+      "output": "Insert test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 8
+    },
+    {
+      "name": "Delete test",
+      "setup": "make",
+      "run": "./pa9 Delete",
+      "input": "",
+      "output": "Delete test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 8
+    },
+    {
+      "name": "Select test",
+      "setup": "make",
+      "run": "./pa9 Select",
+      "input": "",
+      "output": "Select test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 8
+    },
+    {
+      "name": "Drop test",
+      "setup": "make",
+      "run": "./pa9 Drop",
+      "input": "",
+      "output": "Drop test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 8
+    },
+    {
+      "name": "Joins test",
+      "setup": "make",
+      "run": "./pa9 Joins",
+      "input": "",
+      "output": "Joins test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 8
+    },
+    {
+      "name": "Index test",
+      "setup": "make",
+      "run": "./pa9 Index",
+      "input": "",
+      "output": "Index test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 60
+    }
+  ]
+}

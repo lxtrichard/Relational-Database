@@ -94,7 +94,10 @@ namespace ECE141{
       if (selectAll || std::count(selectList.begin(), selectList.end(), cur)) {
         output << "| ";
         output << std::setw(widths[cur]) << std::left;
-        if (data[cur].index()==0){
+        if (data.find(cur) == data.end()) {
+          output << "NULL";
+        }
+        else if (data[cur].index()==0){
           bool* val = std::get_if<bool>(&data[cur]);
           if (*val==true)
             output << "true";
@@ -113,14 +116,24 @@ namespace ECE141{
   bool TabularView::show(std::shared_ptr<DBQuery>& aQuery, RowCollection &aRows){
     const size_t kRowWidth = 8;
     widths = getAttMaxSize(aRows, kRowWidth);
+    StringList selectList = getSelectList(aQuery);
+    for (auto& cur : selectList) {
+      widths[cur] = std::max(cur.size() + 1, widths[cur]);
+    }
     showSeparator(aQuery);
     showHeader(aQuery);
     showSeparator(aQuery);
     OrderedRow orderedRows;
     reorderRow(aQuery, aRows, orderedRows);
+    uint32_t RowCount = 0;
+    uint32_t theLimit = aQuery->getLimit();
     for(auto &field : orderedRows) {
-      for (auto& theRow : field.second)
+      if (RowCount>=theLimit) break;
+      for (auto& theRow : field.second){
+        if (RowCount>=theLimit) break;
         showRow(aQuery, theRow);
+        RowCount++;
+      }
     }
     showSeparator(aQuery);
     return true;

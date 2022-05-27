@@ -12,20 +12,17 @@
 #include <map>
 #include <functional>
 #include <variant>
+#include <memory>
 
 #include "TestManually.hpp"
 #include "TestAutomatic.hpp"
 
 void doSomething() {
-  throw std::runtime_error("Something bad happened");
+  std::cout << "do something\n";
 }
 
-//----------------------------------------------
-
 int main(int argc, const char * argv[]) {
-  
   srand(static_cast<uint32_t>(time(0)));
-    
   if(argc>1) {
     
     std::stringstream theOutput;
@@ -38,11 +35,13 @@ int main(int argc, const char * argv[]) {
       {"Reader",      [&](){return theTests.doReaderTest();}  },
       {"DBCommands",  [&](){return theTests.doDBCommandsTest();}  },
       {"Tables",      [&](){return theTests.doTablesTest();}  },
+      {"Index",       [&](){return theTests.doIndexTest();}},
       {"Insert",      [&](){return theTests.doInsertTest();}  },
+      {"Joins",       [&](){return theTests.doJoinTest();}  },
       {"Select",      [&](){return theTests.doSelectTest();}  },
       {"Update",      [&](){return theTests.doUpdateTest();}  },
       {"Delete",      [&](){return theTests.doDeleteTest();}  },
-      {"DropTable",   [&](){return theTests.doDropTest();}  },
+      {"Drop",        [&](){return theTests.doDropTest();}  },
     };
     
     std::string theCmd(argv[1]);

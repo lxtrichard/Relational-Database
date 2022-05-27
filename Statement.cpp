@@ -24,5 +24,9 @@ namespace ECE141 {
   StatusResult Statement::parse(Tokenizer &aTokenizer) {
     return StatusResult{};
   }
+
+  StatusResult Statement::run(std::ostream &aStream) {
+    return StatusResult{noError};
+  }
   
 }

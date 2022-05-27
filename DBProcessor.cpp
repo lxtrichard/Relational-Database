@@ -147,10 +147,9 @@ namespace ECE141 {
     releaseDatabase();
     activeDB = loadDatabase(aName);
     if (!activeDB){
-      Timer theTimer;
       output << std::setprecision(3) << std::fixed;
       activeDB = new Database(aName, CreateDB{});
-      output << "Query OK, 1 row affected (" << theTimer.elapsed() << " secs)" << std::endl;
+      output << "Query OK, 1 row affected (" << Config::getTimer().elapsed() << " secs)" << std::endl;
       return StatusResult{Errors::noError};
     }
     else{
@@ -168,14 +167,14 @@ namespace ECE141 {
 
   // USE: call this to perform the dropping of a database (remove the file)...
   StatusResult DBProcessor::dropDatabase(const std::string &aName) {
-    Timer theTimer;
     output << std::setprecision(3) << std::fixed;
     std::string thePath = Config::getDBPath(aName);
     if (dbExists(aName)) {
-      if (activeDB->getName() == aName)
-        releaseDatabase();
+      if (activeDB)
+        if (activeDB->getName() == aName)
+          releaseDatabase();
       std::remove(thePath.c_str());
-      output << "Query OK, 0 rows affected ("<< theTimer.elapsed() << " secs) " << std::endl;
+      output << "Query OK, 0 rows affected ("<< Config::getTimer().elapsed() << " secs) " << std::endl;
       return StatusResult{Errors::noError};
     }
     else {

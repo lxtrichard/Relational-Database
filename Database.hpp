@@ -17,6 +17,7 @@
 #include "Row.hpp"
 #include "DBQuery.hpp"
 #include "TabularView.hpp"
+#include "Joins.hpp"
 
 namespace ECE141 {
 
@@ -39,15 +40,17 @@ namespace ECE141 {
                       const std::string &aName,
                       const std::vector<std::string> anAttributeNames, 
                       const std::vector<std::vector<std::string>>& aValues);
-    RowCollection   findRows(std::shared_ptr<DBQuery> aQuery);
     StatusResult    selectRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery);
+    StatusResult    selectJoins(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery, JoinList& aJoins);
     StatusResult    updateRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery, KeyValues &anUpdateSet);
     StatusResult    deleteRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery);
+
 
     StatusResult    encode(std::ostream &aWriter) override;
     StatusResult    decode(std::istream &aReader) override;
 
   protected:
+    RowCollection   findRows(std::shared_ptr<DBQuery> aQuery);
     
     std::string     name;
     std::fstream    stream;   //low level stream used by storage...

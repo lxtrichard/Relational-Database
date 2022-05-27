@@ -45,7 +45,6 @@ namespace ECE141 {
 
     //show all databases
     void showDBs(){
-      Timer theTimer;
       output << std::setprecision(3) << std::fixed;
       output << "+--------------------+" << std::endl;
       output << "| Database           |" << std::endl;
@@ -58,15 +57,14 @@ namespace ECE141 {
       return true;
       });
       output << "+--------------------+" << std::endl;
-      output << theCount << " rows in set (" << theTimer.elapsed() << " secs)" << std::endl;
+      output << theCount << " rows in set (" << Config::getTimer().elapsed() << " secs)" << std::endl;
     };
 
     void dumpDB(const std::string &aName){
-      Timer theTimer;
       output << std::setprecision(3) << std::fixed;
-      output << "+----------------+--------+" << std::endl;
-      output << "| Type           | Id     |" << std::endl;
-      output << "+----------------+--------+" << std::endl;
+      output << "+----------------+----------------+" << std::endl;
+      output << "| Type           | Id             |" << std::endl;
+      output << "+----------------+----------------+" << std::endl;
       std::string thePath = Config::getDBPath(aName);
       std::fstream stream;
       BlockIO theBlockIO(stream);
@@ -86,10 +84,10 @@ namespace ECE141 {
           case BlockType::entity_block:     theTypeName = "Entity"; break;
         }
         output << "| " << std::setw(15) << std::left << theTypeName << "| " 
-            << std::setw(7) << std::left << theBlock.header.id << "|" << std::endl;
-        output << "+----------------+--------+" << std::endl;
+            << std::setw(15) << std::left << theBlock.header.id << "|" << std::endl;
+        output << "+----------------+----------------+" << std::endl;
       }
-      output << theBlockNum <<" rows in set (" << theTimer.elapsed() << " sec) " << std::endl;
+      output << theBlockNum <<" rows in set (" << Config::getTimer().elapsed() << " sec) " << std::endl;
     }
 
   private:
@@ -103,7 +101,6 @@ namespace ECE141 {
     ~TableView() {}
 
     void showTables(std::string aName, KeyIndexes theTableIndexes){
-      Timer theTimer;
       output << std::setprecision(3) << std::fixed;
       output << "+----------------------+" << std::endl;
       output << "| Tables_in_" << std::setw(10) << std::left << aName << " |" << std::endl;
@@ -112,11 +109,10 @@ namespace ECE141 {
         output << "| " << std::setw(20) << std::left << cur.first <<  " |" << std::endl;
       }
       output << "+----------------------+" << std::endl;
-      output << theTableIndexes.size() <<" rows in set (" <<  theTimer.elapsed() << " sec)" << std::endl;
+      output << theTableIndexes.size() <<" rows in set (" <<  Config::getTimer().elapsed() << " sec)" << std::endl;
     };
 
     void describeTables(Entity* anEntity){
-      Timer theTimer;
       output << std::setprecision(3) << std::fixed;
       output << "+----------------+--------------+------+-----+---------+-----------------------------+" << std::endl;
       output << "| Field          | Type         | Null | Key | Default | Extra                       |" << std::endl;
@@ -158,7 +154,7 @@ namespace ECE141 {
         output << std::endl;
       }
       output << "+----------------+--------------+------+-----+---------+-----------------------------+" << std::endl;
-      output << anEntity->getAttributes().size() << " rows in set ("<<  theTimer.elapsed() << " sec)" << std::endl;
+      output << anEntity->getAttributes().size() << " rows in set ("<<  Config::getTimer().elapsed() << " sec)" << std::endl;
     }
   };
 }

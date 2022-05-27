@@ -81,6 +81,7 @@ namespace ECE141 {
       Config::getTimer().reset();
       if(auto *theProc=recognizes(theTokenizer)) {
         if(auto *theCmd=theProc->makeStatement(theTokenizer,theResult)) {
+          if (!theResult) return theResult;
           theResult=theProc->run(theCmd);
           if(theResult) theTokenizer.skipIf(';');
           delete theCmd;

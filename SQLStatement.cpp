@@ -6,7 +6,12 @@
 
 namespace ECE141
 {
-  SQLStatement::SQLStatement(Keywords aStmtType) : Statement(aStmtType){}
+  SQLStatement::SQLStatement(Database* aDB, Keywords aStmtType) 
+      : theDB(aDB), Statement(aStmtType){}
+
+  StatusResult SQLStatement::run(std::ostream &aStream) const {
+    return StatusResult{noError};
+  }
 
   static bool stob(std::string aStr) {
     if (stoi(aStr))
@@ -184,6 +189,15 @@ namespace ECE141
     return StatusResult{Errors::syntaxError};
   };
 
+  StatusResult CreateStatement::run(std::ostream &aStream){
+    Entity* theEntity = new Entity(thetableName);
+    for (auto &theAttribute : attributes){
+      theEntity->addAttribute(theAttribute);
+    }
+    StatusResult theResult = theDB->createTable(aStream, *theEntity);
+    return theResult;
+  };
+
   // ---------------  ShowStatement  -------------------- //
   StatusResult ShowStatement::parse(Tokenizer &aTokenizer){
     Token &theToken = aTokenizer.peek(1);
@@ -192,6 +206,11 @@ namespace ECE141
       return StatusResult{Errors::noError};
     }
     return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult  ShowStatement::run(std::ostream &aStream){
+    StatusResult theResult = theDB->showTables(aStream);
+    return theResult;
   }
 
   // ---------------  DescribeStatement  ------------------ //
@@ -203,6 +222,12 @@ namespace ECE141
       return StatusResult{Errors::noError};
     }
     return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult  DescribeStatement::run(std::ostream &aStream){
+    const std::string &aName = thetableName;
+    StatusResult theResult = theDB->describeTable(aStream, aName);
+    return theResult;
   }
 
   // ---------------  DropStatement  ------------------ //
@@ -217,6 +242,12 @@ namespace ECE141
       }
     }
     return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult DropStatement::run(std::ostream &aStream){
+    const std::string &aName = thetableName;
+    StatusResult theResult = theDB->dropTable(aStream, aName);
+    return theResult;
   }
 
   // ---------------  InsertStatement  ------------------ //
@@ -309,6 +340,11 @@ namespace ECE141
     return StatusResult{Errors::noError};
   }
 
+  StatusResult InsertStatement::run(std::ostream &aStream){
+    StatusResult theResult = theDB->insertRows(aStream, thetableName, theAttributeNames, values);
+    return theResult;
+  }
+
   // ---------------  SelectStatement  ------------------ //
   SelectStatement::SelectStatement(Database* aDB) : theDB(aDB), 
         Statement(Keywords::select_kw), theQuery(new DBQuery()) {};
@@ -321,6 +357,8 @@ namespace ECE141
       return theResult;
     // Parse Entity Name
     theResult = parseEntity(aTokenizer);
+    if (!theResult)
+      return theResult;
     while (aTokenizer.more() && aTokenizer.current().data[0]!=';'){
       Keywords theKeyword = aTokenizer.current().keyword;
       theResult = parseClause(theKeyword, aTokenizer);
@@ -359,6 +397,10 @@ namespace ECE141
       return StatusResult{Errors::identifierExpected};
     theQuery->setEntityName(aTokenizer.current().data);
     Entity *anEntity = theDB->getEntity(aTokenizer.current().data);
+    // check if entity exists
+    if (anEntity == nullptr)
+      return StatusResult{Errors::unknownEntity};
+
     theQuery->setEntity(anEntity);
     aTokenizer.next();
     return StatusResult{Errors::noError};
@@ -368,9 +410,11 @@ namespace ECE141
     using Clauseparser = StatusResult (SelectStatement::*)(Tokenizer&);
     static std::map<Keywords, Clauseparser> theClauseMap = {
       {Keywords::where_kw, &SelectStatement::parseWhere},
-      {Keywords::group_kw, &SelectStatement::parseGroupBy},
       {Keywords::order_kw, &SelectStatement::parseOrderBy},
-      {Keywords::limit_kw, &SelectStatement::parseLimit}
+      {Keywords::limit_kw, &SelectStatement::parseLimit},
+      {Keywords::join_kw, &SelectStatement::parseJoin},
+      {Keywords::left_kw, &SelectStatement::parseJoin},
+      {Keywords::right_kw, &SelectStatement::parseJoin},
     };
     if (theClauseMap.count(aKeyword)) {
       return (this->*theClauseMap[aKeyword])(aTokenizer);
@@ -384,8 +428,70 @@ namespace ECE141
     return theResult;
   }
 
-  StatusResult SelectStatement::parseGroupBy(Tokenizer &aTokenizer){
-    return StatusResult{Errors::unknownCommand};
+  static StatusResult parseTableName(Tokenizer& aTokenizer, std::string& aTableName){
+    if (aTokenizer.current().type != TokenType::identifier)
+      return StatusResult{Errors::identifierExpected};
+    aTableName = aTokenizer.current().data;
+    aTokenizer.next();
+    return StatusResult{Errors::noError};
+  }
+
+  static StatusResult parseTableField(Tokenizer& aTokenizer, TableField& aTableField){
+    std::string temp = aTokenizer.current().data;
+
+    if (temp.find('.') == std::string::npos)
+      return StatusResult{ Errors::syntaxError };
+
+    aTableField.tableName = temp.substr(0, temp.find('.'));
+    aTableField.fieldName = temp.substr(temp.find('.')+1, std::string::npos);
+    aTokenizer.next();
+
+    return StatusResult{Errors::noError};
+  }
+
+  //jointype JOIN tablename ON table1.field=table2.field
+  StatusResult SelectStatement::parseJoin(Tokenizer &aTokenizer) {
+    Token &theToken = aTokenizer.current();
+    StatusResult theResult{joinTypeExpected}; //add joinTypeExpected to your errors file if missing...
+
+    Keywords theJoinType{Keywords::join_kw}; //could just be a plain join
+    if(in_array<Keywords>(gJoinTypes, theToken.keyword)) {
+      theJoinType=theToken.keyword;
+      aTokenizer.next(1); //yank the 'join-type' token (e.g. left, right)
+      if(aTokenizer.skipIf(Keywords::join_kw)) {
+        std::string theTable;
+        if((theResult=parseTableName(aTokenizer, theTable))) {
+          Join theJoin(theTable, theJoinType);
+          theResult = StatusResult{keyExpected}; //on...
+          if(aTokenizer.skipIf(Keywords::on_kw)) { //LHS field = RHS field
+            TableField LHS("");
+            if((theResult=parseTableField(aTokenizer, theJoin.lhs))) {
+              if(aTokenizer.skipIf('=')) {
+                if((theResult=parseTableField(aTokenizer, theJoin.rhs))) {
+                  if (theJoinType == Keywords::right_kw) { // convert to right join
+                    // reset the right table
+                    std::string temp = theJoin.table;
+                    theJoin.table = theQuery->getEntityName();
+                    // reset the left table
+                    theQuery->setEntityName(temp);
+                    Entity *anEntity = theDB->getEntity(temp);
+                    theQuery->setEntity(anEntity);                    
+                  }
+                  if (theJoin.lhs.tableName == theJoin.table && 
+                      theJoin.rhs.tableName == theQuery->getEntityName()) { // swap the lhs and rhs
+                    TableField tempField = theJoin.lhs;
+                    theJoin.lhs = theJoin.rhs;
+                    theJoin.rhs = tempField;
+                  }
+                  joins.push_back(theJoin);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return theResult;
   }
 
   StatusResult SelectStatement::parseOrderBy(Tokenizer &aTokenizer){
@@ -409,6 +515,17 @@ namespace ECE141
       return StatusResult{Errors::noError};
     }
     return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult SelectStatement::run(std::ostream& aStream){
+    StatusResult theResult = StatusResult{Errors::noError};
+    if (joins.size() > 0) {
+      theResult = theDB->selectJoins(aStream, theQuery, joins);
+    }
+    else{
+      theResult = theDB->selectRows(aStream, theQuery);
+    }
+    return theResult;
   }
 
   // ---------------  UpdateStatement  ------------------ //
@@ -465,11 +582,17 @@ namespace ECE141
       }
 
       theValue = aTokenizer.current().data;
-      aTokenizer.next();      
+      aTokenizer.next();
+      aTokenizer.skipIf(','); // skip comma
 
       theMap[anAttribute->getType()]();      
     }
     return StatusResult{Errors::noError};
+  }
+
+  StatusResult UpdateStatement::run(std::ostream& aStream){
+    StatusResult theResult = theDB->updateRows(aStream, theQuery, theSet);
+    return theResult;
   }
 
   // ---------------  DeleteStatement  ------------------ //
@@ -487,6 +610,11 @@ namespace ECE141
         return theResult;
     }
     return StatusResult{Errors::noError};
+  }
+
+  StatusResult DeleteStatement::run(std::ostream& aStream){
+    StatusResult theResult = theDB->deleteRows(aStream, theQuery);
+    return theResult;
   }
 
 } // namespace ECE141

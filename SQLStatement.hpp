@@ -9,6 +9,8 @@
 #include "Attribute.hpp"
 #include "SQLProcessor.hpp"
 #include "DBQuery.hpp"
+#include "Database.hpp"
+#include "Joins.hpp"
 
 namespace ECE141 {
   
@@ -16,56 +18,65 @@ namespace ECE141 {
   
   class SQLStatement: public Statement {
   public:
-    SQLStatement(Keywords aStmtType);
+    SQLStatement(Database* aDB, Keywords aStmtType);
     
     ~SQLStatement(){};
-    std::string           getTableName() {return thetableName;}
-    std::vector<Attribute> getAttributes() {return attributes;}
+    std::string             getTableName() {return thetableName;}
+    std::vector<Attribute>  getAttributes() {return attributes;}
+    virtual StatusResult    run(std::ostream &aStream) const;
 
-    // StatusResult  parse(Tokenizer &aTokenizer);    
   protected:
+    Database*   theDB;
     std::string thetableName;
     std::vector<Attribute> attributes;
   };
 
   class CreateStatement : public SQLStatement {
   public:
-      CreateStatement() : SQLStatement(Keywords::create_kw) {};
+      CreateStatement(Database* aDB) : SQLStatement(aDB, Keywords::create_kw) {};
       ~CreateStatement(){};
       StatusResult  parse(Tokenizer& aTokenizer);
       StatusResult  parseAttributes(Tokenizer& aTokenizer);
       StatusResult  parseAttribute(Tokenizer& aTokenizer, Attribute& anAttribute);
       StatusResult  parseOptions(Tokenizer& aTokenizer, Attribute& anAttribute);
       StatusResult  getVarSize(Tokenizer& aTokenizer, Attribute& anAttribute);
+      StatusResult  run(std::ostream &aStream);
   };
   
   class ShowStatement : public SQLStatement {
   public:
-      ShowStatement() : SQLStatement(Keywords::show_kw) {};
+      ShowStatement(Database* aDB) : SQLStatement(aDB, Keywords::show_kw) {};
       ~ShowStatement(){};
 
       StatusResult  parse(Tokenizer& aTokenizer);
+      StatusResult  run(std::ostream &aStream);
+
   };
 
   class DescribeStatement : public SQLStatement {
   public:
-      DescribeStatement() : SQLStatement(Keywords::describe_kw) {};
+      DescribeStatement(Database* aDB) : SQLStatement(aDB, Keywords::describe_kw) {};
       ~DescribeStatement(){};
 
       StatusResult  parse(Tokenizer& aTokenizer);
+      StatusResult  run(std::ostream &aStream);
+
   };
 
   class DropStatement : public SQLStatement {
   public:
-      DropStatement() : SQLStatement(Keywords::drop_kw) {};
+      DropStatement(Database* aDB) : SQLStatement(aDB, Keywords::drop_kw) {};
       ~DropStatement(){};
 
       StatusResult  parse(Tokenizer& aTokenizer);
+      StatusResult  run(std::ostream &aStream);
+
   };
 
   class InsertStatement : public Statement {
   public:
-      InsertStatement() : Statement(Keywords::insert_kw), thetableName("") {};
+      InsertStatement(Database* aDB) : theDB(aDB), 
+            Statement(Keywords::insert_kw), thetableName("") {};
       ~InsertStatement() {};
 
       StatusResult parse(Tokenizer& aTokenizer);
@@ -74,9 +85,12 @@ namespace ECE141 {
       std::vector<std::string>&               getAttributes() { return theAttributeNames; }
       std::vector<std::vector<std::string>>&  getValues() { return values; }
 
+      StatusResult  run(std::ostream& aStream);
+
   protected:
-      std::string                             thetableName;
-      std::vector<std::string>                theAttributeNames;
+      Database*                     theDB;
+      std::string                   thetableName;
+      std::vector<std::string>      theAttributeNames;
       std::vector<std::vector<std::string>>   values;
   };
 
@@ -86,20 +100,24 @@ namespace ECE141 {
 
       ~SelectStatement() {};
 
+      std::shared_ptr<DBQuery>& getQuery() { return theQuery; }
+      JoinList& getJoins() { return joins; }
+
       StatusResult parse(Tokenizer& aTokenizer);
       StatusResult parseClause(Keywords aKeyword, Tokenizer& aTokenizer);
-
-      std::shared_ptr<DBQuery>& getQuery() { return theQuery; }
+      virtual StatusResult run(std::ostream& aStream);
 
   protected:
       StatusResult parseSelect(Tokenizer& aTokenizer);
       StatusResult parseEntity(Tokenizer& aTokenizer);
       StatusResult parseWhere(Tokenizer& aTokenizer);
       StatusResult parseOrderBy(Tokenizer& aTokenizer);
-      StatusResult parseGroupBy(Tokenizer& aTokenizer);
+      StatusResult parseJoin(Tokenizer& aTokenizer);
       StatusResult parseLimit(Tokenizer& aTokenizer);
+
       Database     *theDB;
       std::shared_ptr<DBQuery> theQuery;
+      JoinList joins;
   };
 
   class UpdateStatement : public SelectStatement{
@@ -110,6 +128,7 @@ namespace ECE141 {
       StatusResult  parse(Tokenizer& aTokenizer);
       StatusResult  parseSet(Tokenizer& aTokenizer);
       KeyValues&    getSet() { return theSet; }
+      StatusResult  run(std::ostream& aStream);
   protected:
       KeyValues theSet;
   };
@@ -120,6 +139,8 @@ namespace ECE141 {
       ~DeleteStatement() {};
 
       StatusResult  parse(Tokenizer& aTokenizer);
+
+      StatusResult  run(std::ostream& aStream);
   };
 }
 

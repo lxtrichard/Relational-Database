@@ -9,6 +9,7 @@
 #include <iostream>
 #include <iomanip>
 #include <map>
+#include <algorithm>
 #include "Database.hpp"
 #include "Config.hpp"
 
@@ -39,7 +40,8 @@ namespace ECE141 {
     if (theStorage.load(ss, 0) == Errors::noError) {
       decode(ss);
     }
-
+    
+    // load the entities of the database into theEntityList
     for (auto &it : theTableIndexes) {
       std::stringstream ss1;
       theStorage.load(ss1, it.second);
@@ -56,7 +58,8 @@ namespace ECE141 {
       this->encode(ss);
       StorageInfo info(0, ss.str().size(), 0, BlockType::meta_block);
       theStorage.save(ss, info);
-
+      
+      // write the entities of the database from theEntityList
       for (auto& entity : theEntityList){
         std::stringstream ss1;
         entity.encode(ss1);
@@ -69,10 +72,7 @@ namespace ECE141 {
   }
   
   static bool stob(std::string aStr) {
-    if (stoi(aStr))
-      return true;
-    else
-      return false;
+    return stoi(aStr);
   }
 
   // USE: Call this to dump the db for debug purposes...
@@ -82,7 +82,6 @@ namespace ECE141 {
 
   // USE: Call this to create a table... 
   StatusResult Database::createTable(std::ostream &anOutput, Entity &anEntity) {
-    Timer theTimer;
     anOutput << std::setprecision(3) << std::fixed;
     std::string theName = anEntity.getName();
     if (theTableIndexes.find(theName) != theTableIndexes.end()) {
@@ -97,7 +96,7 @@ namespace ECE141 {
     StorageInfo info(anEntity.hashString(), ss.str().size(), blockNum, BlockType::entity_block);
     theStorage.save(ss, info);
 
-    anOutput << "Query OK, 1 row affected (" <<  theTimer.elapsed() << " sec)" << std::endl;
+    anOutput << "Query OK, 1 row affected (" <<  Config::getTimer().elapsed() << " sec)" << std::endl;
     changed = true;
     return StatusResult{noError};
   }
@@ -123,7 +122,6 @@ namespace ECE141 {
   }
 
   StatusResult Database::dropTable(std::ostream &anOutput, const std::string &aName){
-    Timer theTimer;
     anOutput << std::setprecision(3) << std::fixed;
     if (!theTableIndexes.count(aName)) {
       return StatusResult{Errors::unknownTable};
@@ -153,7 +151,8 @@ namespace ECE141 {
     this->encode(ss);
     StorageInfo info(0, ss.str().size(), 0, BlockType::meta_block);
     theStorage.save(ss, info);
-    anOutput << "Query OK, "<< theRowCollection.size() << " rows affected (" << theTimer.elapsed() << " sec)" << std::endl;
+    // show the result
+    anOutput << "Query OK, "<< theRowCollection.size()+1 << " rows affected (" << Config::getTimer().elapsed() << " sec)" << std::endl;
     return StatusResult{noError};
   }
 
@@ -202,7 +201,6 @@ namespace ECE141 {
                 const std::string &aName,
                 const std::vector<std::string> anAttributeNames, 
                 const std::vector<std::vector<std::string>>& aValues){
-    Timer theTimer;
     anOutput << std::setprecision(3) << std::fixed;
     Entity* theTable = getEntity(aName);
     if (!theTable) {
@@ -226,7 +224,7 @@ namespace ECE141 {
       RowAffected += 1;
     }
     changed = true;
-    anOutput << "Query OK, " << RowAffected << " rows affected (" <<  theTimer.elapsed() << " sec)" << std::endl;
+    anOutput << "Query OK, " << RowAffected << " rows affected (" <<  Config::getTimer().elapsed() << " sec)" << std::endl;
     return StatusResult{noError};
   }
 
@@ -234,12 +232,11 @@ namespace ECE141 {
     Entity *anEntity = getEntity(aQuery->getEntityName());
     uint32_t theHashStr = anEntity->hashString();
     RowCollection theRowCollection;
-    uint32_t theCount = 0;
     // get all data blocks for the entity
-    theStorage.each([&theRowCollection, &aQuery, theHashStr, &theCount]
+    theStorage.each([&theRowCollection, &aQuery, theHashStr]
                 (const Block& theBlock, uint32_t theIdx)->bool
     {
-      if (theBlock.header.type == static_cast<char>(BlockType::data_block) && theCount < aQuery->getLimit())
+      if (theBlock.header.type == static_cast<char>(BlockType::data_block))
         if (theBlock.header.id == theHashStr){
           std::stringstream ss;
           ss.write(theBlock.payload, theBlock.header.size);
@@ -247,7 +244,6 @@ namespace ECE141 {
           theRow->decode(ss);
           if (aQuery->matches(theRow->getData())){
             theRowCollection.push_back(std::move(theRow));
-            ++theCount;
           }
         }
       return true;
@@ -256,7 +252,6 @@ namespace ECE141 {
   }
 
   StatusResult Database::selectRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery){
-    Timer theTimer;
     anOutput << std::setprecision(3) << std::fixed;
 
     // find rows that match the query
@@ -264,12 +259,83 @@ namespace ECE141 {
 
     TabularView theView(anOutput);
     theView.show(aQuery, theRowCollection);
-    anOutput << theRowCollection.size() << " rows in set (" << theTimer.elapsed() << " sec)\n";
+    // get the size of the selected rows
+    size_t theRowNum = std::min(theRowCollection.size(), static_cast<size_t>(aQuery->getLimit()));
+    anOutput << theRowNum << " rows in set (" << Config::getTimer().elapsed() << " sec)\n";
+    return StatusResult{noError};
+  }
+
+  static RowCollection combineRows(JoinMap& theLeftMap, JoinMap& theRightMap){
+    RowCollection theJoinRows;
+    Value theKey;
+    for (auto& cur : theLeftMap){
+      // iterate the left map
+      theKey = cur.first;
+      for (auto& lRow : cur.second){
+        // iterate the left rows
+        auto& theRightRows = theRightMap[theKey];
+        if (theRightRows.size()==0){
+          theJoinRows.push_back(std::move(lRow));
+        }
+
+        for (auto& rRow : theRightRows){
+          // iterate the right rows
+          Row theRow;
+          KeyValues& leftData = lRow->getData();
+          KeyValues& theData = theRow.getData();
+          for (auto& cur1 : rRow->getData()){
+            if (leftData.count(cur1.first) == 0)
+              leftData[cur1.first] = cur1.second;
+          }
+          for (auto& cur2 : leftData){
+            theData[cur2.first] = cur2.second;
+          }
+          theJoinRows.push_back(std::make_unique<Row>(theRow));
+        }
+      }
+    }
+    return theJoinRows;
+  }
+
+  StatusResult Database::selectJoins(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery, JoinList& aJoins){
+    anOutput << std::setprecision(3) << std::fixed;
+
+    std::string leftTableName = aQuery->getEntityName();
+    std::string rightTableName = aJoins[0].table;
+
+    std::shared_ptr<DBQuery> theLeftQuery(new DBQuery());
+    std::shared_ptr<DBQuery> theRightQuery(new DBQuery());
+    theLeftQuery->setEntityName(leftTableName);
+    theRightQuery->setEntityName(rightTableName);
+
+    // find rows that match the query
+    RowCollection theLeftRowCollection = findRows(theLeftQuery);
+    RowCollection theRightRowCollection = findRows(theRightQuery);
+
+    // get the key map of the right table
+    JoinMap theLeftMap;
+    Value theKey;
+    for (auto& lRow : theLeftRowCollection){
+      theKey = lRow->getData()[aJoins[0].lhs.fieldName];
+      theLeftMap[theKey].push_back(std::move(lRow));
+    }
+
+    // get the key map of the right table
+    JoinMap theRightMap;
+    for (auto& rRow : theRightRowCollection){
+      theKey = rRow->getData()[aJoins[0].rhs.fieldName];
+      theRightMap[theKey].push_back(std::move(rRow));
+    }
+
+    // combine the rows
+    RowCollection theJoinRows = combineRows(theLeftMap, theRightMap);
+    TabularView theView(anOutput);
+    theView.show(aQuery, theJoinRows);
+    anOutput << theJoinRows.size() << " rows in set (" << Config::getTimer().elapsed() << " sec)\n";
     return StatusResult{noError};
   }
 
   StatusResult Database::updateRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery, KeyValues &anUpdateSet){
-    Timer theTimer;
     anOutput << std::setprecision(3) << std::fixed;
     Entity *anEntity = getEntity(aQuery->getEntityName());
     uint32_t theHashStr = anEntity->hashString();
@@ -288,13 +354,12 @@ namespace ECE141 {
       StorageInfo info(theHashStr, ss.str().size(), theRow->getBlockNumber(), BlockType::data_block);
       theStorage.save(ss, info);
     }
-    anOutput << "Query Ok. " << theRowCollection.size() << " rows in set (" << theTimer.elapsed() << " sec)\n";
+    anOutput << "Query Ok. " << theRowCollection.size() << " rows in set (" << Config::getTimer().elapsed() << " sec)\n";
     changed = true;
     return StatusResult{noError};
   }
   
   StatusResult Database::deleteRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery){
-    Timer theTimer;
     anOutput << std::setprecision(3) << std::fixed;
 
     // find rows that match the query
@@ -304,11 +369,10 @@ namespace ECE141 {
     for (auto& theRow : theRowCollection) {
       theStorage.releaseBlocks(theRow->getBlockNumber());
     }
-    anOutput << "Query Ok. " << theRowCollection.size() << " rows in set (" << theTimer.elapsed() << " sec)\n";
+    anOutput << "Query Ok. " << theRowCollection.size() << " rows in set (" << Config::getTimer().elapsed() << " sec)\n";
     changed = true;
     return StatusResult{noError};
   }
-
 
 
   // encode and decode

@@ -53,6 +53,10 @@ namespace ECE141 {
     return rand() % theMod;
   }
 
+  size_t Fake::Counting::range(size_t aMin, size_t aMax) {
+    return aMin+ (rand() % (aMax-aMin));
+  }
+
   double Fake::Counting::real(size_t maxdigits) {
     double num=(double)integer(maxdigits);
     double sub=(double)integer(3);
@@ -291,6 +295,10 @@ namespace ECE141 {
 
   std::string Fake::People::full_name() {
     return std::string(first_name()+" "+last_name());
+  }
+
+  size_t Fake::People::age(size_t aMin, size_t aMax) {
+    return Fake::Counting::range(aMin, aMax);
   }
 
   std::string Fake::People::mobile() {

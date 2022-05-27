@@ -27,6 +27,7 @@ namespace ECE141 {
     
     Keywords                getType() const {return stmtType;}
     // virtual   const char*   getStatementName() const {return "statement";}
+    virtual   StatusResult  run(std::ostream &aStream);
     
   protected:
     Keywords   stmtType;    

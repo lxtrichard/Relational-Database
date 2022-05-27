@@ -33,16 +33,6 @@ namespace ECE141 {
                                 StatusResult &aResult) override;
     
     StatusResult  run(Statement *aStmt) override;
-    
-    //We don't DO the work here, but we can help route cmds...
-    StatusResult  createTable(Statement *aStmt);
-    StatusResult  describeTable(Statement *aStmt);
-    StatusResult  dropTable(Statement *aStmt);
-    StatusResult  showTables();
-    StatusResult  insertRows(Statement *anInsertStmt);
-    StatusResult  selectRows(Statement *aSelectStmt);
-    StatusResult  updateRows(Statement *anUpdateStmt);
-    StatusResult  deleteRows(Statement *aDeleteStmt);
 
     Database*     getActiveDB() {return activeDB;}
     SQLProcessor* setActiveDB(Database* aDB);

@@ -43,6 +43,7 @@ namespace ECE141 {
     Operators   op;   //=     //users.id=books.author_id
     Logical     logic; //and, or...
     bool        isNot; //is it a NOT?
+    std::string tableName; //name of the table
     
     Expression(Operand &aLHSOperand, Operators anOp,
                Operand &aRHSOperand)

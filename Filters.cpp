@@ -154,20 +154,25 @@ namespace ECE141 {
 
   //where operand is field, number, string...
   StatusResult parseOperand(Tokenizer &aTokenizer,
-                            Entity &anEntity, Operand &anOperand) {
+                            Entity &anEntity, Operand &anOperand, std::string& aName) {
     StatusResult theResult{noError};
     Token &theToken = aTokenizer.current();
     if(TokenType::identifier==theToken.type) {
-      if(auto *theAttr=anEntity.getAttribute(theToken.data)) {
+      std::string temp = theToken.data;
+      if (temp.find('.') != std::string::npos){
+        aName = temp.substr(0, temp.find('.'));
+        temp = temp.substr(temp.find('.')+1, std::string::npos);
+      }
+      if(auto *theAttr=anEntity.getAttribute(temp)) {
         anOperand.ttype=theToken.type;
-        anOperand.name=theToken.data; //hang on to name...
-        anOperand.entityId= Helpers::hashString(theToken.data.c_str());
+        anOperand.name=temp; //hang on to name...
+        anOperand.entityId= Helpers::hashString(temp.c_str());
         anOperand.dtype=theAttr->getType();
       }
       else {
         anOperand.ttype=TokenType::string;
         anOperand.dtype=DataTypes::varchar_type;
-        anOperand.value=theToken.data;
+        anOperand.value=temp;
       }
     }
     else if(TokenType::number==theToken.type) {
@@ -219,7 +224,8 @@ namespace ECE141 {
 
       // parse operand and operator...
       if(theToken.type!=TokenType::identifier) return theResult;
-      if((theResult=parseOperand(aTokenizer,anEntity,theLHS))) {
+      std::string theName=anEntity.getName();
+      if((theResult=parseOperand(aTokenizer,anEntity,theLHS,theName))) {
         Token &theToken=aTokenizer.current();
         if(theToken.type==TokenType::operators) {
           std::string anOP = "";
@@ -229,7 +235,7 @@ namespace ECE141 {
             theToken = aTokenizer.current();
           }
           Operators theOp=Helpers::toOperator(anOP);
-          if((theResult=parseOperand(aTokenizer,anEntity,theRHS))) {
+          if((theResult=parseOperand(aTokenizer,anEntity,theRHS,theName))) {
             if(validateOperands(theLHS, theRHS, anEntity)) {
               add(new Expression(theLHS, theOp, theRHS));
               if (theNot) expressions.back()->isNot=true; //add NOT operator
