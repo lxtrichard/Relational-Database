@@ -16,6 +16,7 @@
 #include "Database.hpp"
 #include "Application.hpp"
 #include "Helpers.hpp"
+#include "DBStatement.hpp"
 
 
 namespace ECE141 {
@@ -36,91 +37,64 @@ namespace ECE141 {
   //CmdProcessor interface ...
   bool DBProcessor::isKnown(Keywords aKeyword) {
     static Keywords theKnown[]=
-      {Keywords::create_kw,Keywords::drop_kw, Keywords::show_kw, Keywords::use_kw, Keywords::dump_kw};
+      { Keywords::create_kw,Keywords::drop_kw, 
+        Keywords::show_kw, Keywords::use_kw, 
+        Keywords::dump_kw };
     auto theIt = std::find(std::begin(theKnown),
                            std::end(theKnown), aKeyword);
     return theIt!=std::end(theKnown);
   }
 
   CmdProcessor* DBProcessor::recognizes(Tokenizer &aTokenizer) {
-    theTokens.clear();
-    if (isKnown(aTokenizer.current().keyword)) {
-      theTokens.push_back(aTokenizer.current());
-      // If show database is called
-      if (aTokenizer.current().keyword==Keywords::show_kw) {
-        if (aTokenizer.peek(1).keyword==Keywords::databases_kw){
-          theTokens.push_back(aTokenizer.current()); 
-          if (aTokenizer.peek(2).data[0]==';' || aTokenizer.peek(2).data[0]=='\n'){
-            aTokenizer.next(2);
-            return this;
-          }
-        }
-      }
-      else if (aTokenizer.current().keyword==Keywords::use_kw){
-        if (aTokenizer.peek(1).type == TokenType::identifier) {
-          theTokens.push_back(aTokenizer.peek(1));
-          if (aTokenizer.peek(2).data[0]==';' || aTokenizer.peek(2).data[0]=='\n') {
-              aTokenizer.next(2);
-              return this;
-          }
-        }
-      }
-      else if (aTokenizer.peek(1).keyword==Keywords::database_kw){
-        theTokens.push_back(aTokenizer.peek(1));
-        if (aTokenizer.peek(2).type==TokenType::identifier){
-          theTokens.push_back(aTokenizer.peek(2));
-          if (aTokenizer.peek(3).data[0]==';' || aTokenizer.peek(3).data[0]=='\n'){
-            aTokenizer.next(3);
-            return this;
-          }
-        }
+    Keywords theKeyword = aTokenizer.current().keyword;
+    // Define a factory of Statement objects
+    std::map<Keywords, std::function<Statement* ()>> theStmtFactory{
+      {Keywords::create_kw,   [&]() { return new CreateDBStatement();}},            
+      {Keywords::drop_kw,     [&]() { return new DropDBStatement();}},
+      {Keywords::show_kw,     [&]() { return new ShowDBStatement();}},
+      {Keywords::use_kw,      [&]() { return new UseStatement();}},
+      {Keywords::dump_kw,     [&]() { return new DumpStatement(); }}
+    };
+    if (theStmtFactory.count(theKeyword)) {
+      theStatement = theStmtFactory[theKeyword]();
+    }
+    if (theStatement) {
+      if (theStatement->parse(aTokenizer)) {
+        return this;
       }
     }
+    aTokenizer.restart();
+    delete theStatement;
+    theStatement = nullptr;
     return nullptr;
   }
 
   StatusResult DBProcessor::run(Statement *aStmt) {
+
+    // ----------------------------------------------------------------
     switch (aStmt->getType()) {
-    case Keywords::create_kw:
-        anActiveDBName = theTokens[2].data;
-        createDatabase(anActiveDBName);
-        break;
-    case Keywords::drop_kw:
-        anActiveDBName = theTokens[2].data;
-        dropDatabase(anActiveDBName);
-        break;
-    case Keywords::use_kw:
-        anActiveDBName = theTokens[1].data;
-        useDatabase(anActiveDBName);
-        break;
-    case Keywords::show_kw:
-        showDatabases();
-        break;
-    case Keywords::dump_kw:
-        anActiveDBName = theTokens[2].data;
-        dumpDatabase(anActiveDBName);
-        break;
-    default: break;
+      case Keywords::create_kw:     return createDatabase(aStmt);
+      case Keywords::drop_kw:       return dropDatabase(aStmt);
+      case Keywords::use_kw:        return useDatabase(aStmt);
+      case Keywords::show_kw:       return showDatabases();
+      case Keywords::dump_kw:       return dumpDatabase(aStmt);
+      default: break;
     }
-    return StatusResult{ Errors::noError };
+    return StatusResult{ Errors::notImplemented };
   }
 
   // USE: retrieve a statement based on given text input...
   Statement* DBProcessor::makeStatement(Tokenizer &aTokenizer,
                                         StatusResult &aResult) {
-    Token theToken = theTokens[0];
-    if (isKnown(theToken.keyword)) {
-        return new Statement(theToken.keyword);
-    }
-    return nullptr;
+    
+    aResult = StatusResult{noError};
+    return theStatement;
   }
   
   //-------------------------------------------------------
 
   Database* DBProcessor::getDatabaseInUse() {
-    if (activeDB)
-      return activeDB;
-    return nullptr;
+    return activeDB;
   }
 
   void DBProcessor::releaseDatabase(){
@@ -130,20 +104,22 @@ namespace ECE141 {
     }
   }
 
-  Database* DBProcessor::loadDatabase(const std::string aName){
-    Database *theDB = nullptr;
-    if (dbExists(aName))
-      theDB = new Database(aName, OpenDB{});
-    return theDB;
-  }
-
   bool DBProcessor::dbExists(const std::string &aDBName) {
     std::string thePath = Config::getDBPath(aDBName);
     std::ifstream theStream(thePath);
     return !theStream ? false : true;
   }
 
-  StatusResult DBProcessor::createDatabase(const std::string &aName) {
+  Database* DBProcessor::loadDatabase(const std::string aName){
+    Database *theDB = nullptr;
+    if (dbExists(aName))
+      theDB = new Database(aName, OpenDB{});
+    return theDB;
+  }  
+
+  StatusResult DBProcessor::createDatabase(Statement *aStmt) {
+    DBStatement *theStmt = dynamic_cast<DBStatement*>(aStmt);
+    std::string aName = theStmt->getDBName();
     releaseDatabase();
     activeDB = loadDatabase(aName);
     if (!activeDB){
@@ -166,7 +142,9 @@ namespace ECE141 {
   }
 
   // USE: call this to perform the dropping of a database (remove the file)...
-  StatusResult DBProcessor::dropDatabase(const std::string &aName) {
+  StatusResult DBProcessor::dropDatabase(Statement *aStmt) {
+    DBStatement *theStmt = dynamic_cast<DBStatement*>(aStmt);
+    std::string aName = theStmt->getDBName();
     output << std::setprecision(3) << std::fixed;
     std::string thePath = Config::getDBPath(aName);
     if (dbExists(aName)) {
@@ -185,7 +163,9 @@ namespace ECE141 {
   }
 
   // USE: DB dump all storage blocks
-  StatusResult DBProcessor::dumpDatabase(const std::string &aName)  {
+  StatusResult DBProcessor::dumpDatabase(Statement *aStmt)  {
+    DBStatement *theStmt = dynamic_cast<DBStatement*>(aStmt);
+    std::string aName = theStmt->getDBName();
     releaseDatabase();
     activeDB = loadDatabase(aName);
     if (activeDB){
@@ -197,7 +177,9 @@ namespace ECE141 {
 
   
   // USE: call DB object to be loaded into memory...
-  StatusResult DBProcessor::useDatabase(const std::string &aName) {   
+  StatusResult DBProcessor::useDatabase(Statement *aStmt) { 
+    DBStatement *theStmt = dynamic_cast<DBStatement*>(aStmt);
+    std::string aName = theStmt->getDBName();
     if (!dbExists(aName)) {
       std::cout << "Database does not exist!" << std::endl;
       return StatusResult{Errors::unknownDatabase};

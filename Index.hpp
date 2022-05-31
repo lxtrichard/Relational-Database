@@ -15,6 +15,7 @@
 #include "Storage.hpp"
 #include "BasicTypes.hpp"
 #include "Errors.hpp"
+#include "Helpers.hpp"
 
 
 namespace ECE141 {
@@ -26,13 +27,27 @@ namespace ECE141 {
     
   struct Index : public Storable, BlockIterator {
     
-    Index(Storage &aStorage, uint32_t aBlockNum=0,
-          IndexType aType=IndexType::intKey)
-        :  storage(aStorage), type(aType), blockNum(aBlockNum) {
+    Index(Storage &aStorage, uint32_t aBlockNum=0, std::string aTableName="", 
+          std::string aFieldName="", IndexType aType=IndexType::intKey)
+        :  storage(aStorage), type(aType), blockNum(aBlockNum), tableName(aTableName), fieldName(aFieldName) {
           changed=false;
           entityId=0;
         }
+    Index(const Index& aCopy) : storage(aCopy.storage), data(aCopy.data), type(aCopy.type),
+          tableName(aCopy.tableName), fieldName(aCopy.fieldName), blockNum(aCopy.blockNum),
+        changed(false) {}
     
+    Index& operator=(const Index& aCopy) {
+      //storage = aCopy.storage;
+      data = aCopy.data;
+      type = aCopy.type;
+      tableName = aCopy.tableName;
+      fieldName = aCopy.fieldName;
+      blockNum = aCopy.blockNum;
+      changed = false;
+      return *this;
+    }
+
     class ValueProxy {
     public:
       Index     &index;
@@ -61,7 +76,28 @@ namespace ECE141 {
       return ValueProxy(*this,aKey);
     }
       
-    uint32_t getBlockNum() const {return blockNum;}
+    uint32_t    getBlockNum() const {return blockNum;}
+    std::string getTableName() const {return tableName;}
+    std::string getFieldName() const {return fieldName;}
+    IndexType   getType() const {return type;}
+    bool        isChanged() const {return changed;}
+    std::map<IndexKey, uint32_t> getData() const {return data;}
+
+    IndexPairs getIndexPairs() const {
+      IndexPairs res;
+      for (auto& cur : data) {
+        if (type == IndexType::strKey) {
+          std::string theKey = std::get<std::string>(cur.first);
+          res.push_back({ theKey, std::to_string(cur.second) });
+        }
+        else {
+          std::string theKey = std::to_string(std::get<std::uint32_t>(cur.first));
+          res.push_back({ theKey, std::to_string(cur.second) });
+        }
+      }
+      return res;
+    }
+    
     Index&   setBlockNum(uint32_t aBlockNum) {
                blockNum=aBlockNum;
                return *this;
@@ -74,6 +110,7 @@ namespace ECE141 {
         
     StorageInfo getStorageInfo(size_t aSize) {
       //student complete...
+      return StorageInfo( Helpers::hashString(tableName.c_str()), aSize, blockNum, BlockType::index_block);
     }
             
     IntOpt valueAt(IndexKey &aKey) {
@@ -87,11 +124,19 @@ namespace ECE141 {
         
     StatusResult erase(const std::string &aKey) {
       //student implement
+      if (data.count(aKey)){
+        data.erase(aKey);
+        changed=true;
+      }
       return StatusResult{Errors::noError};
     }
 
     StatusResult erase(uint32_t aKey) {
       //student implement
+      if (data.count(aKey)){
+        data.erase(aKey);
+        changed=true;
+      }
       return StatusResult{Errors::noError};
     }
 
@@ -102,17 +147,64 @@ namespace ECE141 {
     }
       
     StatusResult encode(std::ostream &anOutput) override {
-      //student implement
+      anOutput << tableName << ' ' << int(type) << ' ' << fieldName << ' ' << blockNum << ' ';
+
+      anOutput << data.size() << ' ';
+      for (auto thePair : data) {
+        switch (thePair.first.index()) {
+        case 0:
+          anOutput << "i " << std::get<uint32_t>(thePair.first);
+          break;
+        case 1:
+          anOutput << "s " << std::get<std::string>(thePair.first);
+          break;
+        }
+        anOutput << ' ' << thePair.second << ' ';
+      }
       return StatusResult{Errors::noError};
     }
     
     StatusResult decode(std::istream &anInput) override {
-      //student implement...
+      std::string temp;
+      anInput >> temp;
+      tableName = temp;
+
+      anInput >> temp;
+      type = IndexType{ std::stoi(temp) };
+
+      anInput >> temp;
+      fieldName = temp;
+
+      anInput >> temp;
+      blockNum = std::stol(temp);
+
+      uint32_t    theIKey;
+      std::string theSKey;
+      char        theType;
+      uint32_t    theValue;
+      size_t      theCount;
+
+      anInput >> theCount;
+      for (size_t i = 0; i < theCount; i++) {
+        anInput >> theType;
+        IndexKey theKey;
+        switch (theType) {
+        case 'i':
+          anInput >> theIKey >> theValue;
+          theKey = theIKey;
+          break;
+        case 's':
+          anInput >> theSKey >> theValue;
+          theKey = theSKey;
+          break;
+        }
+        data[theKey] = theValue;
+      }
       return StatusResult{Errors::noError};
     }
     
     //visit blocks associated with index
-    bool each(BlockVisitor aVisitor) override {
+    bool each(const BlockVisitor& aVisitor) override {
       Block theBlock;
       for(auto thePair : data) {
         if(storage.readBlock(thePair.second, theBlock)) {
@@ -137,14 +229,14 @@ namespace ECE141 {
     Storage                       &storage;
     std::map<IndexKey, uint32_t>  data;
     IndexType                     type;
-    std::string                   name;
+    std::string                   tableName;
+    std::string                   fieldName;
     bool                          changed;
     uint32_t                      blockNum; //where index storage begins
     uint32_t                      entityId;
   }; //index
 
   using IndexMap = std::map<std::string, std::unique_ptr<Index> >;
-
 }
 
 

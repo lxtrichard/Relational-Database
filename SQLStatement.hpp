@@ -142,6 +142,32 @@ namespace ECE141 {
 
       StatusResult  run(std::ostream& aStream);
   };
+
+  class IndexesStatement : public SQLStatement {
+  public:
+      IndexesStatement(Database* aDB) : SQLStatement(aDB, Keywords::show_kw) {};
+      ~IndexesStatement(){};
+
+      StatusResult  parse(Tokenizer& aTokenizer);
+      StatusResult  run(std::ostream &aStream);
+  };
+
+  class IndexStatement : public SQLStatement {
+  public:
+      IndexStatement(Database* aDB) : SQLStatement(aDB, Keywords::show_kw) {};
+      ~IndexStatement(){};
+
+      StatusResult  parse(Tokenizer& aTokenizer);
+      StatusResult  run(std::ostream &aStream);
+
+      std::string getTableName() { return thetableName; }
+      std::string getFieldName() { return theFieldName; }
+  protected:
+      std::string theTableName;
+      std::string theFieldName;
+  };
+
+  
 }
 
 #endif /* SQLStatement_hpp */

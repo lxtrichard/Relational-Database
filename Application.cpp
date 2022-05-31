@@ -35,7 +35,8 @@ namespace ECE141 {
     if(isKnown(aTokenizer.current().keyword)) {
       return this;
     }
-    else if(theDBProcessor.recognizes(aTokenizer)) {
+    else if(theDBProcessor.isKnown(aTokenizer.current().keyword) 
+               && theDBProcessor.recognizes(aTokenizer)) {
       return &theDBProcessor;
     }
     theSQLProcessor.setActiveDB(theDBProcessor.getDatabaseInUse());
@@ -48,6 +49,7 @@ namespace ECE141 {
   StatusResult Application::run(Statement* aStatement) {
     switch(aStatement->getType()) {
       case Keywords::quit_kw:
+        theDBProcessor.releaseDatabase();
         output << "DB::141 is shutting down\n";
         return StatusResult(ECE141::userTerminated);
         break;

@@ -34,6 +34,7 @@ namespace ECE141 {
     
     StatusResult  run(Statement *aStmt) override;
 
+    Statement*    showFactory(Tokenizer &aTokenizer, Database* aDB);
     Database*     getActiveDB() {return activeDB;}
     SQLProcessor* setActiveDB(Database* aDB);
     SQLProcessor* setEntity(Entity* aEntity);

@@ -24,7 +24,8 @@ namespace ECE141 {
     //other types?
     unknown_block='U',
     meta_block='M',
-    entity_block='E'
+    entity_block='E',
+    index_block='I',
   };
 
   //a small header that describes the block...

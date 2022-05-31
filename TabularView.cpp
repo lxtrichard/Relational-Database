@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <variant>
 #include "TabularView.hpp"
 
 namespace ECE141{
@@ -61,7 +62,7 @@ namespace ECE141{
 
     for (auto& cur : selectList) {
       if (selectAll || std::count(selectList.begin(), selectList.end(), cur)) {
-        for (int i=0;i<=widths[cur];i++)
+        for (size_t i=0;i<=widths[cur];i++)
           output << "-";
         output << "+";
       }
@@ -137,5 +138,44 @@ namespace ECE141{
     }
     showSeparator(aQuery);
     return true;
+  }
+
+  TabularView& TabularView::showIndexes(std::vector<Index> &anIndexes){
+    output << "+-----------------+-----------------+" << std::endl;
+    output << "| table           | field(s)        |" << std::endl;
+    output << "+-----------------+-----------------+" << std::endl;
+    for (auto& cur : anIndexes){
+      output << "| ";
+      output << std::setw(16) << std::left << cur.getTableName();
+      output << "| ";
+      output << std::setw(16) << std::left << cur.getFieldName();
+      output << "|" << std::endl;
+    }
+    output << "+-----------------+-----------------+" << std::endl;
+    return *this;
+  }
+
+  TabularView& TabularView::showIndex(Index &anIndex){
+    output << "+-----------------+-----------------+" << std::endl;
+    output << "| key             | block#          |" << std::endl;
+    output << "+-----------------+-----------------+" << std::endl;
+    std::map<IndexKey, uint32_t> theData = anIndex.getData();
+    for (auto & cur : theData){
+      if (anIndex.getType() == IndexType::intKey){
+        uint32_t theKey = std::get<uint32_t>(cur.first);
+        output << "| ";
+        output << std::setw(16) << std::left << theKey;
+      }
+      else{
+        std::string theKey = std::get<std::string>(cur.first);
+        output << "| ";
+        output << std::setw(16) << std::left << theKey;
+      }
+      output << "| ";
+      output << std::setw(16) << std::left << cur.second;
+      output << "|" << std::endl;
+    }
+    output << "+-----------------+-----------------+" << std::endl;
+    return *this;
   }
 }

@@ -42,7 +42,7 @@ namespace ECE141 {
     }
     
     // load the entities of the database into theEntityList
-    for (auto &it : theTableIndexes) {
+    for (auto &it : theEntityIndexes) {
       std::stringstream ss1;
       theStorage.load(ss1, it.second);
       Entity theEntity(it.first);
@@ -50,6 +50,14 @@ namespace ECE141 {
       theEntityList.push_back(theEntity);
     }
 
+    // load the indexes of the database into theIndexMap
+    for (auto& cur : theIndexBlockNum){
+      std::stringstream ss2;
+      theStorage.load(ss2, cur);
+      Index theIndex(theStorage, cur);
+      theIndex.decode(ss2);
+      theIndexList.push_back(theIndex);
+    }
   }
 
   Database::~Database() {
@@ -63,12 +71,112 @@ namespace ECE141 {
       for (auto& entity : theEntityList){
         std::stringstream ss1;
         entity.encode(ss1);
-        size_t pos = theTableIndexes[entity.getName()];
+        size_t pos = theEntityIndexes[entity.getName()];
         StorageInfo info(entity.hashString(), ss1.str().size(), pos, BlockType::entity_block);
         theStorage.save(ss1, info);
       }
+
+      // write the indexes of the database from theIndexMap
+      for (auto& cur : theIndexList){
+        if (cur.isChanged()){
+          std::stringstream ss2;
+          cur.encode(ss2);
+          StorageInfo theInfo = cur.getStorageInfo(ss2.str().size());
+          theStorage.save(ss2, theInfo);
+        }
+      }
     }
     stream.close();
+  }
+
+  // Get Index
+  IndexPairs Database::getIndex(const std::string &aName, std::vector<std::string> aFields) {
+    IndexPairs res;
+    for (auto& index : theIndexList){
+      if (index.getTableName() == aName){
+        if (std::find(aFields.begin(), aFields.end(), index.getFieldName()) != aFields.end()){
+          IndexPairs thePairs = index.getIndexPairs();
+          res.insert(res.end(), thePairs.begin(), thePairs.end());
+        }
+      }
+    }
+    return res;
+  }
+
+  IndexPairs Database::getAllIndex(){
+    IndexPairs res;
+    for (auto& index : theIndexList){
+      IndexPairs thePairs = index.getIndexPairs();
+      res.insert(res.end(), thePairs.begin(), thePairs.end());
+    }
+    return res;
+  }
+
+  // insert Index
+  void Database::insertIndexes(std::vector<Index*> anIndexes, KeyValues& aKeyValue, uint32_t blockNum){
+    for (auto* index : anIndexes) {
+      std::string theField = index->getFieldName();
+      if (index->getType() == IndexType::intKey) {
+        uint32_t theKey = std::get<int>(aKeyValue[theField]);
+        Index::ValueProxy theProxy = (*index)[theKey];
+        theProxy = blockNum;
+      }
+      else {
+        std::string theKey = std::get<std::string> (aKeyValue[theField]);
+        Index::ValueProxy theProxy = (*index)[theKey];
+        theProxy = blockNum;
+      }
+    }
+  }
+
+  // remove Indexes
+  void Database::deleteIndexes(KeyValues& aKeyValue){
+    for (auto& index : theIndexList){
+      std::string theField = index.getFieldName();
+      if (index.getType() == IndexType::intKey) {
+        uint32_t theKey = std::get<int>(aKeyValue[theField]);
+        index.erase(theKey);
+      }
+      else {
+        std::string theKey = std::get<std::string> (aKeyValue[theField]);
+        index.erase(theKey);
+      }
+    }
+  }
+
+  void Database::deleteAllIndexes(std::string aTableName){
+    std::vector<Index> newIndexes;
+    for (auto& index : theIndexList){
+      if (index.getTableName() != aTableName){
+        newIndexes.push_back(index);
+      }
+      else{
+        theStorage.releaseBlocks(index.getBlockNum());
+        theIndexBlockNum.erase(index.getBlockNum());
+      }
+    }
+    theIndexList = newIndexes;
+  }
+
+  StatusResult Database::showIndexes(std::ostream &anOutput){
+    TabularView theView(anOutput);
+    theView.showIndexes(theIndexList);
+    size_t theRowNum = theIndexList.size();
+    anOutput << theRowNum << " rows in set (" << Config::getTimer().elapsed() << " sec)\n";
+    return StatusResult{Errors::noError};
+  }
+
+  StatusResult Database::showIndex(std::ostream &anOutput, std::string aTableName, std::string aFieldName){
+    for (auto& index : theIndexList){
+      if (index.getTableName() == aTableName && index.getFieldName() == aFieldName){
+        TabularView theView(anOutput);
+        theView.showIndex(index);
+        size_t theRowNum = index.getSize();
+        anOutput << theRowNum << " rows in set (" << Config::getTimer().elapsed() << " sec)\n";
+        return StatusResult{Errors::noError};
+      }
+    }
+    return StatusResult{Errors::noError};
   }
   
   static bool stob(std::string aStr) {
@@ -84,17 +192,44 @@ namespace ECE141 {
   StatusResult Database::createTable(std::ostream &anOutput, Entity &anEntity) {
     anOutput << std::setprecision(3) << std::fixed;
     std::string theName = anEntity.getName();
-    if (theTableIndexes.find(theName) != theTableIndexes.end()) {
+    if (theEntityIndexes.find(theName) != theEntityIndexes.end()) {
       return StatusResult{Errors::tableExists};
     }
+    // write Entity 
     uint32_t blockNum = theStorage.getFreeBlock();
     theEntityList.push_back(anEntity);
-    theTableIndexes[anEntity.getName()] = blockNum;
+    theEntityIndexes[anEntity.getName()] = blockNum;
 
     std::stringstream ss;
     anEntity.encode(ss);
     StorageInfo info(anEntity.hashString(), ss.str().size(), blockNum, BlockType::entity_block);
     theStorage.save(ss, info);
+
+    // create an Index
+    const Attribute* primaryAtt = anEntity.getPrimaryKey();
+    IndexType theType;
+    if (primaryAtt->getType() == DataTypes::int_type)
+      theType = IndexType::intKey;
+    else
+      theType = IndexType::strKey; 
+
+    // add index
+    uint32_t theBlockNum = theStorage.getFreeBlock();
+    Index theIndex(theStorage, theBlockNum, theName, primaryAtt->getName(), theType);
+    theIndexList.push_back(theIndex);
+    theIndexBlockNum.insert(theBlockNum);
+
+    // write index to file 
+    std::stringstream ss1;
+    theIndex.encode(ss1);
+    StorageInfo info1 = theIndex.getStorageInfo(ss1.str().size());
+    theStorage.save(ss1, info1);
+
+    // write meta block
+    std::stringstream ss2;
+    this->encode(ss2);
+    StorageInfo info2(0, ss2.str().size(), 0, BlockType::meta_block);
+    theStorage.save(ss2, info2);
 
     anOutput << "Query OK, 1 row affected (" <<  Config::getTimer().elapsed() << " sec)" << std::endl;
     changed = true;
@@ -103,7 +238,7 @@ namespace ECE141 {
 
   StatusResult Database::showTables(std::ostream &anOutput){
     TableView theView(anOutput);
-    theView.showTables(name, theTableIndexes);
+    theView.showTables(name, theEntityIndexes);
     return StatusResult{noError};
   }
 
@@ -123,7 +258,7 @@ namespace ECE141 {
 
   StatusResult Database::dropTable(std::ostream &anOutput, const std::string &aName){
     anOutput << std::setprecision(3) << std::fixed;
-    if (!theTableIndexes.count(aName)) {
+    if (!theEntityIndexes.count(aName)) {
       return StatusResult{Errors::unknownTable};
     }
     // remove the rows
@@ -135,8 +270,8 @@ namespace ECE141 {
     }
 
     // remove the entity
-    uint32_t blockNum = theTableIndexes[aName];
-    theTableIndexes.erase(aName);
+    uint32_t blockNum = theEntityIndexes[aName];
+    theEntityIndexes.erase(aName);
     for (size_t i = 0; i < theEntityList.size(); i++) {
       if (theEntityList[i].getName() == aName) {
         theEntityList.erase(theEntityList.begin() + i);
@@ -144,7 +279,9 @@ namespace ECE141 {
       }
     }
     theStorage.releaseBlocks(blockNum);
-    changed = true;
+
+    // remove the index
+    deleteAllIndexes(aName);
 
     // rewrite the meta block
     std::stringstream ss;
@@ -153,6 +290,7 @@ namespace ECE141 {
     theStorage.save(ss, info);
     // show the result
     anOutput << "Query OK, "<< theRowCollection.size()+1 << " rows affected (" << Config::getTimer().elapsed() << " sec)" << std::endl;
+    changed = true;
     return StatusResult{noError};
   }
 
@@ -210,19 +348,43 @@ namespace ECE141 {
     buildKeyValueList(theKeyValueList, theTable, anAttributeNames, aValues);
     int RowAffected = 0;
     uint32_t theTableHash = theTable->hashString();
+
+    std::vector<Index*> theTableIndexes;
+    for (auto& theIndex : theIndexList) {
+      if (theIndex.getTableName() == theTable->getName())
+        theTableIndexes.push_back(&theIndex);
+    }
+
     for (auto& keyvalue : theKeyValueList) {
-      uint32_t blockNum = theStorage.getNextFreeBlock();
+      uint32_t blockNum = theStorage.getFreeBlock();
       int id = theTable->getIncrement();
       keyvalue["id"] = id;
       Row theRow(keyvalue, blockNum);
 
-      theRowIndexes[theTable->getName()].push_back(blockNum);
+      // theRowIndexes[theTable->getName()].push_back(blockNum);
+      insertIndexes(theTableIndexes, keyvalue, blockNum);
+      
       std::stringstream ss;
       theRow.encode(ss);
-      StorageInfo info(theTableHash, ss.str().size(), kNewBlock, BlockType::data_block);
+      StorageInfo info(theTableHash, ss.str().size(), blockNum, BlockType::data_block);
       theStorage.save(ss, info);
       RowAffected += 1;
     }
+
+    // write index to file 
+    for (auto theIndex : theTableIndexes) {
+      std::stringstream ss1;
+      theIndex->encode(ss1);
+      StorageInfo info1 = theIndex->getStorageInfo(ss1.str().size());
+      theStorage.save(ss1, info1);
+    }
+
+    // write meta block
+    std::stringstream ss2;
+    this->encode(ss2);
+    StorageInfo info2(0, ss2.str().size(), 0, BlockType::meta_block);
+    theStorage.save(ss2, info2);
+
     changed = true;
     anOutput << "Query OK, " << RowAffected << " rows affected (" <<  Config::getTimer().elapsed() << " sec)" << std::endl;
     return StatusResult{noError};
@@ -232,12 +394,12 @@ namespace ECE141 {
     Entity *anEntity = getEntity(aQuery->getEntityName());
     uint32_t theHashStr = anEntity->hashString();
     RowCollection theRowCollection;
+    std::string primaryKey = anEntity->getPrimaryKey()->getName(); // the primary key
     // get all data blocks for the entity
-    theStorage.each([&theRowCollection, &aQuery, theHashStr]
-                (const Block& theBlock, uint32_t theIdx)->bool
-    {
-      if (theBlock.header.type == static_cast<char>(BlockType::data_block))
-        if (theBlock.header.id == theHashStr){
+    for (auto& index : theIndexList) {
+      if (index.getTableName() == aQuery->getEntityName() && index.getFieldName() == primaryKey) {
+        index.each([&](const Block& theBlock, uint32_t theIdx)->bool
+        {
           std::stringstream ss;
           ss.write(theBlock.payload, theBlock.header.size);
           std::unique_ptr<Row> theRow(new Row());
@@ -245,9 +407,11 @@ namespace ECE141 {
           if (aQuery->matches(theRow->getData())){
             theRowCollection.push_back(std::move(theRow));
           }
+          return true;
         }
-      return true;
-    });
+        );
+      }
+    }
     return theRowCollection;
   }
 
@@ -367,8 +531,10 @@ namespace ECE141 {
 
     // delete rows
     for (auto& theRow : theRowCollection) {
+      deleteIndexes(theRow->getData()); // delete indexes
       theStorage.releaseBlocks(theRow->getBlockNumber());
     }
+    
     anOutput << "Query Ok. " << theRowCollection.size() << " rows in set (" << Config::getTimer().elapsed() << " sec)\n";
     changed = true;
     return StatusResult{noError};
@@ -378,17 +544,13 @@ namespace ECE141 {
   // encode and decode
   StatusResult Database::encode(std::ostream &aWriter) {
     aWriter << name << ' ';
-    for (auto& cur : theTableIndexes) {
+    for (auto& cur : theEntityIndexes) {
       aWriter << cur.first << ' ' << cur.second << ' ';
     }
     aWriter << "# ";
-    for (auto& cur : theRowIndexes) {
-      aWriter << cur.first << ' ';
-      for (auto& blockNum : cur.second) {
-        aWriter << blockNum << ' ';
+    for (auto& cur : theIndexBlockNum) {          
+          aWriter << cur << ' ';
       }
-      aWriter << "# ";
-    }
     aWriter << "# ";
     return StatusResult{Errors::noError};
   }
@@ -402,20 +564,13 @@ namespace ECE141 {
       std::string theName = temp;
       aReader >> temp;
       uint32_t theBlockNum = std::stoul(temp);
-      theTableIndexes[theName] = theBlockNum;
+      theEntityIndexes[theName] = theBlockNum;
     }
     while (aReader >> temp) {
       if (temp == "#")
           break;
-      std::string theName = temp;
-      std::vector<uint32_t> theBlockNums;
-      while (aReader >> temp) {
-        if (temp == "#")
-            break;
-        uint32_t theBlockNum = std::stoul(temp);
-        theBlockNums.push_back(theBlockNum);
-      }
-      theRowIndexes[theName] = theBlockNums;
+      uint32_t theBlockNum = std::stoul(temp);
+      theIndexBlockNum.insert(theBlockNum);
     }
     return StatusResult{Errors::noError};
   }

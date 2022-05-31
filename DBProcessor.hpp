@@ -31,15 +31,16 @@ namespace ECE141 {
     StatusResult  run(Statement *aStmt) override;
                
       //dbProcessor interface...
-    StatusResult  createDatabase(const std::string &aName);
-    StatusResult  dumpDatabase(const std::string &aName);
-    StatusResult  dropDatabase(const std::string &aName);
+    StatusResult  createDatabase(Statement *aStmt);
+    StatusResult  dumpDatabase(Statement *aStmt);
+    StatusResult  dropDatabase(Statement *aStmt);
     StatusResult  showDatabases() const;
-    StatusResult  useDatabase(const std::string &aName);
+    StatusResult  useDatabase(Statement *aStmt);
 
     bool          dbExists(const std::string &aDBName);
     bool          isKnown(Keywords aKeyword);
     Database*     getDatabaseInUse();
+    void          releaseDatabase();
 
   protected:
 
@@ -48,7 +49,7 @@ namespace ECE141 {
     std::vector<Token> theTokens;
     std::string   anActiveDBName;
     Database*     loadDatabase(const std::string aName);
-    void          releaseDatabase();
+    Statement     *theStatement;
   };
 
 }

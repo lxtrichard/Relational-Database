@@ -52,9 +52,9 @@ namespace ECE141 {
       int theCount = 0;
       FolderReader theReader(path.c_str());
       theReader.each(".db",[&](const std::string &aName) {
-      output << "| " << std::left << std::setw(19) << aName << "|" << std::endl;
-      theCount++;
-      return true;
+        output << "| " << std::left << std::setw(19) << aName << "|" << std::endl;
+        theCount++;
+        return true;
       });
       output << "+--------------------+" << std::endl;
       output << theCount << " rows in set (" << Config::getTimer().elapsed() << " secs)" << std::endl;
@@ -81,7 +81,8 @@ namespace ECE141 {
           case BlockType::free_block:     theTypeName = "Free"; break;
           case BlockType::unknown_block:  theTypeName = "Unknown"; break;
           case BlockType::meta_block:     theTypeName = "Meta"; break;
-          case BlockType::entity_block:     theTypeName = "Entity"; break;
+          case BlockType::entity_block:   theTypeName = "Entity"; break;
+          case BlockType::index_block:    theTypeName = "Index"; break;
         }
         output << "| " << std::setw(15) << std::left << theTypeName << "| " 
             << std::setw(15) << std::left << theBlock.header.id << "|" << std::endl;
@@ -100,16 +101,16 @@ namespace ECE141 {
     TableView(std::ostream& anOutput) : View(anOutput) {}
     ~TableView() {}
 
-    void showTables(std::string aName, KeyIndexes theTableIndexes){
+    void showTables(std::string aName, KeyIndexes theEntityIndexes){
       output << std::setprecision(3) << std::fixed;
       output << "+----------------------+" << std::endl;
       output << "| Tables_in_" << std::setw(10) << std::left << aName << " |" << std::endl;
       output << "+----------------------+" << std::endl;
-      for (auto& cur : theTableIndexes) {
+      for (auto& cur : theEntityIndexes) {
         output << "| " << std::setw(20) << std::left << cur.first <<  " |" << std::endl;
       }
       output << "+----------------------+" << std::endl;
-      output << theTableIndexes.size() <<" rows in set (" <<  Config::getTimer().elapsed() << " sec)" << std::endl;
+      output << theEntityIndexes.size() <<" rows in set (" <<  Config::getTimer().elapsed() << " sec)" << std::endl;
     };
 
     void describeTables(Entity* anEntity){

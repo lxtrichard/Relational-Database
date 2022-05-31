@@ -18,6 +18,7 @@
 #include "View.hpp"
 #include "Row.hpp"
 #include "DBQuery.hpp"
+#include "Index.hpp"
 
 namespace ECE141 {
 
@@ -34,6 +35,8 @@ namespace ECE141 {
     TabularView& showSeparator(std::shared_ptr<DBQuery>& aQuery);
     TabularView& showHeader(std::shared_ptr<DBQuery>& aQuery);
     TabularView& showRow(std::shared_ptr<DBQuery>& aQuery, std::unique_ptr<Row>& aRow);
+    TabularView& showIndexes(std::vector<Index> &anIndexes);
+    TabularView& showIndex(Index &anIndex);
 
     bool show(std::shared_ptr<DBQuery>& aQuery, RowCollection &aRows);
     

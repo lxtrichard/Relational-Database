@@ -18,6 +18,7 @@
 #include "DBQuery.hpp"
 #include "TabularView.hpp"
 #include "Joins.hpp"
+#include "Index.hpp"
 
 namespace ECE141 {
 
@@ -45,6 +46,13 @@ namespace ECE141 {
     StatusResult    updateRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery, KeyValues &anUpdateSet);
     StatusResult    deleteRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery);
 
+    IndexPairs      getIndex(const std::string &aName, std::vector<std::string> aFields);
+    IndexPairs      getAllIndex();
+    void            insertIndexes(std::vector<Index*> anIndexes, KeyValues& aKeyValue, uint32_t blockNum);
+    void            deleteIndexes(KeyValues& aKeyValue);
+    void            deleteAllIndexes(std::string aTableName);
+    StatusResult    showIndexes(std::ostream &anOutput);
+    StatusResult    showIndex(std::ostream &anOutput, std::string aTableName, std::string aFieldName);
 
     StatusResult    encode(std::ostream &aWriter) override;
     StatusResult    decode(std::istream &aReader) override;
@@ -56,9 +64,11 @@ namespace ECE141 {
     std::fstream    stream;   //low level stream used by storage...
     Storage         theStorage;
     bool            changed;  //might be helpful, or ignore if you prefer.
+
     std::vector<Entity> theEntityList;
-    KeyIndexes      theTableIndexes;
-    RowIndexes      theRowIndexes;
+    KeyIndexes          theEntityIndexes;
+    std::set<uint32_t>  theIndexBlockNum; //block numbers of index blocks
+    std::vector<Index>  theIndexList; // index list
   };
 
 }

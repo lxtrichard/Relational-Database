@@ -22,6 +22,7 @@
 #include "FolderReader.hpp"
 #include "TestSequencer.hpp"
 #include "Faked.hpp"
+#include "ScriptRunner.hpp"
 
 void showErrors(ECE141::StatusResult &aResult, std::ostream &anOutput) {
   
@@ -166,35 +167,20 @@ namespace ECE141 {
       return theNames.size()>0;
     }
 
-    bool doScriptTest(std::istream &anInput, std::ostream &anOutput) {
-      ECE141::Application   theApp(anOutput);
-      ECE141::StatusResult  theResult{};
-      std::string theCommand;
-      
-      while(theResult && anInput) {
-        std::getline (anInput, theCommand);
-        std::stringstream theStream(theCommand);
-        anOutput << theCommand << "\n";
-        theResult=theApp.handleInput(theStream);
-        if(theResult==ECE141::userTerminated) {
-          theResult.error=Errors::noError;
-          break;
-        }
-        else if(!theResult) {
-          showErrors(theResult, anOutput);
-        }
-      }
-      return theResult;
+    StatusResult doScriptTest(std::istream &anInput, std::ostream &anOutput) {
+      ECE141::Application theApp(anOutput);
+      ScriptRunner        theRunner(theApp);
+      return theRunner.run(anInput, anOutput);
     }
     
     //----------------------------------------------
 
     bool doAppTest() {
 
-      std::string theInput("version; help; quit;");
+      std::string theInput("version;help;quit;");
       std::stringstream theStream(theInput);
       std::stringstream theOutput;
-      bool theResult=doScriptTest(theStream,theOutput);
+      StatusResult theResult=doScriptTest(theStream,theOutput);
       std::string temp=theOutput.str();
       output << temp << "\n";
       
@@ -227,19 +213,21 @@ namespace ECE141 {
               
     //validates output of DBCommand test..
     size_t analyzeOutput(std::istream &aStream, Responses &aResults) {
-        std::stack<Commands> theStack; //tracking open state...
+      std::stack<Commands> theStack; //tracking open state...
 
-        static KWList createDB{Keywords::create_kw,Keywords::database_kw};
-        static KWList showDBs{Keywords::show_kw,Keywords::databases_kw};
-        static KWList dumpDB{Keywords::dump_kw,Keywords::database_kw};
-        static KWList dropDB{Keywords::drop_kw,Keywords::database_kw};
-        static KWList createTable{Keywords::create_kw,Keywords::table_kw};
-        static KWList showTables{Keywords::show_kw,Keywords::tables_kw};
-        static KWList dropTable{Keywords::drop_kw,Keywords::table_kw};
-        static KWList insertInto{Keywords::insert_kw,Keywords::into_kw};
+      static KWList createDB{Keywords::create_kw,Keywords::database_kw};
+      static KWList showDBs{Keywords::show_kw,Keywords::databases_kw};
+      static KWList dumpDB{Keywords::dump_kw,Keywords::database_kw};
+      static KWList dropDB{Keywords::drop_kw,Keywords::database_kw};
+      static KWList createTable{Keywords::create_kw,Keywords::table_kw};
+      static KWList showTables{Keywords::show_kw,Keywords::tables_kw};
+      static KWList showIndex{Keywords::show_kw,Keywords::index_kw};
+      static KWList showIndexes{Keywords::show_kw,Keywords::indexes_kw};
+      static KWList dropTable{Keywords::drop_kw,Keywords::table_kw};
+      static KWList insertInto{Keywords::insert_kw,Keywords::into_kw};
 
-        Tokenizer theTokenizer(aStream);
-        if(theTokenizer.tokenize()) {
+      Tokenizer theTokenizer(aStream);
+      if(theTokenizer.tokenize()) {
         TestSequencer theSeq(theTokenizer);
         int theValue{0};
         while(theTokenizer.more()) {
@@ -287,6 +275,19 @@ namespace ECE141 {
             theSeq.getNumber(theValue).skipPast(')');
             aResults.push_back({Commands::showTables,theValue});
           }
+          else if(theSeq.clear().nextIs(showIndex)) {
+            if(theTokenizer.skipTo(Keywords::rows_kw)) {
+              auto theToken=theTokenizer.peek(-1);
+              theValue=std::stoi(theToken.data);
+              theSeq.skip(7);
+            }
+            aResults.push_back({Commands::showIndex,theValue});
+          }
+          else if(theSeq.clear().nextIs(showIndexes)) {
+            theTokenizer.skipTo(TokenType::number);
+            theSeq.getNumber(theValue).skipPast(')');
+            aResults.push_back({Commands::showIndexes,theValue});
+          }
           else if(theSeq.clear().nextIs(dropTable)) {
             theTokenizer.skipTo(TokenType::number);
             theSeq.getNumber(theValue).skipPast(')');
@@ -333,8 +334,8 @@ namespace ECE141 {
           else theTokenizer.next(); //skip...
         }
       }
-      return aResults.size();
-    }
+    return aResults.size();
+  }
         
     using FileList = std::vector<std::string>;
     
@@ -425,7 +426,7 @@ namespace ECE141 {
       if(theResult) {
         auto temp=theOutput1.str();
         output << temp; //show user...
-        std::cout << temp;
+        //std::cout << temp;
               
         Responses theResponses;
         auto theCount=analyzeOutput(theOutput1,theResponses);
@@ -882,15 +883,25 @@ namespace ECE141 {
       theStream1 << "use " << theDBName1 << ";\n";
 
       addUsersTable(theStream1);
+      addBooksTable(theStream1);
       insertUsers(theStream1,0,5);
+      insertBooks(theStream1,0,14);
+      
+      theStream1 << "show indexes;\n";
+      theStream1 << "drop table Books;\n";
+      theStream1 << "show indexes;\n";
 
       theStream1 << "use " << theDBName2 << ";\n";
       theStream1 << "drop database " << theDBName2 << ";\n";
       theStream1 << "use " << theDBName1 << ";\n";
 
-      insertFakeUsers(theStream1,30,2);
+      theStream1 << "select * from Users\n";
+      insertFakeUsers(theStream1,30,1);
+      
+      theStream1 << "DELETE from Users where age>60;\n";
+      theStream1 << "select * from Users\n";
+      insertFakeUsers(theStream1,30,1);
 
-      theStream1 << "show indexes;\n";
       theStream1 << "show index id from Users;\n";
       theStream1 << "drop database " << theDBName1 << ";\n";
       theStream1 << "quit;\n";
@@ -910,11 +921,14 @@ namespace ECE141 {
         Expected theExpected({
           {Commands::createDB,1},    {Commands::createDB,1},
           {Commands::useDB,0},       {Commands::createTable,1},
-          {Commands::insert,5},      {Commands::useDB,0},
-          {Commands::dropTable,6},   {Commands::useDB,0},
-          {Commands::insert,30},     {Commands::insert,30},
-          {Commands::showIndexes,1}, {Commands::showIndex,60},
-          {Commands::dropDB,0},
+          {Commands::createTable,1}, {Commands::insert,5},
+          {Commands::insert,14},     {Commands::showIndexes,2},
+          {Commands::dropTable,15},  {Commands::showIndexes,1},
+          {Commands::useDB,0},       {Commands::dropDB,0},
+          {Commands::useDB,0},       {Commands::select,5},
+          {Commands::insert,30},     {Commands::delet,2},
+          {Commands::select,33},     {Commands::insert,30},
+          {Commands::showIndex,63},  {Commands::dropDB,0},
         });
 
         if(!theCount || !(theExpected==theResponses)) {
@@ -981,7 +995,16 @@ namespace ECE141 {
 
 }
 
+
 #endif /* TestAutomatic_h */
+
+
+
+
+
+
+
+
 
 
 

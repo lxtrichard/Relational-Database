@@ -31,5 +31,7 @@ namespace ECE141 {
   using KeyValues = std::map<const std::string, Value>;
   using KeyIndexes = std::map<const std::string, uint32_t>;
   using RowIndexes = std::map<const std::string, std::vector<uint32_t>>;
+  using IndexKey = std::variant<uint32_t, std::string>;
+  using IndexPairs = std::vector<std::pair<std::string, std::string>>;
 }
 #endif /* BasicTypes_h */

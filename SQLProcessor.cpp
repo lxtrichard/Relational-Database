@@ -31,6 +31,21 @@ namespace ECE141 {
     return this;
   }
 
+  Statement* SQLProcessor::showFactory(Tokenizer &aTokenizer, Database* aDB){
+    Keywords theKeyword = aTokenizer.peek(1).keyword;
+    switch (theKeyword)
+    {
+    case Keywords::tables_kw:
+      return new ShowStatement(aDB);
+    case Keywords::indexes_kw:
+      return new IndexesStatement(aDB);
+    case Keywords::index_kw:
+      return new IndexStatement(aDB);
+    default:
+      return nullptr;
+    }
+  }
+
   CmdProcessor* SQLProcessor::recognizes(Tokenizer &aTokenizer) {
     if (activeDB==nullptr) {
       std::cout << "NO DATABASE IS LOADED!\n" << std::endl;
@@ -40,7 +55,7 @@ namespace ECE141 {
     // Define a factory of Statement objects
     std::map<Keywords, std::function<Statement* ()>> theStmtFactory{
       {Keywords::create_kw,   [&]() { return new CreateStatement(activeDB);}},            
-      {Keywords::show_kw,     [&]() { return new ShowStatement(activeDB);}},
+      {Keywords::show_kw,     [&]() { return showFactory(aTokenizer, activeDB);}}, // show entry
       {Keywords::describe_kw, [&]() { return new DescribeStatement(activeDB);}},
       {Keywords::drop_kw,     [&]() { return new DropStatement(activeDB); }},
       {Keywords::insert_kw,   [&]() { return new InsertStatement(activeDB); }},

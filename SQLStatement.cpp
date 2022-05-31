@@ -617,4 +617,40 @@ namespace ECE141
     return theResult;
   }
 
+  // ---------------  IndexesStatement  ------------------ //
+  StatusResult  IndexesStatement::parse(Tokenizer& aTokenizer){
+    if (aTokenizer.skipIf(Keywords::show_kw))
+      if (aTokenizer.skipIf(Keywords::indexes_kw))
+        return StatusResult{Errors::noError};
+    return StatusResult{Errors::unknownCommand};        
+  }
+
+  StatusResult  IndexesStatement::run(std::ostream& aStream){
+    StatusResult theResult = theDB->showIndexes(aStream);
+    return theResult;
+  }
+
+  // ---------------  IndexStatement  ------------------ //
+  StatusResult  IndexStatement::parse(Tokenizer& aTokenizer){
+    if (aTokenizer.skipIf(Keywords::show_kw))
+      if (aTokenizer.skipIf(Keywords::index_kw))
+        if (aTokenizer.current().type == TokenType::identifier) {
+          theFieldName = aTokenizer.current().data;
+          aTokenizer.next();
+          if (aTokenizer.skipIf(Keywords::from_kw)) {
+            if (aTokenizer.current().type == TokenType::identifier) {
+              theTableName = aTokenizer.current().data;
+              aTokenizer.next();
+              return StatusResult{Errors::noError};
+            }
+          }
+        }
+    return StatusResult{Errors::unknownCommand};        
+  }
+
+  StatusResult  IndexStatement::run(std::ostream& aStream){
+    StatusResult theResult = theDB->showIndex(aStream, theTableName, theFieldName);
+    return theResult;
+  }
+
 } // namespace ECE141
