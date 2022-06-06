@@ -478,10 +478,13 @@ namespace ECE141 {
       for (auto& lRow : cur.second){
         // iterate the left rows
         auto& theRightRows = theRightMap[theKey];
+
+        // if the right row didn't exist, set NULL
         if (theRightRows.size()==0){
           theJoinRows.push_back(std::move(lRow));
         }
 
+        // if the right rows existed, combine
         for (auto& rRow : theRightRows){
           // iterate the right rows
           Row theRow;
@@ -507,6 +510,7 @@ namespace ECE141 {
     std::string leftTableName = aQuery->getEntityName();
     std::string rightTableName = aJoins[0].table;
 
+    // create the left and right queries and entity names
     std::shared_ptr<DBQuery> theLeftQuery(new DBQuery());
     std::shared_ptr<DBQuery> theRightQuery(new DBQuery());
     theLeftQuery->setEntityName(leftTableName);
@@ -516,7 +520,7 @@ namespace ECE141 {
     RowCollection theLeftRowCollection = findRows(theLeftQuery);
     RowCollection theRightRowCollection = findRows(theRightQuery);
 
-    // get the key map of the right table
+    // get the key map of the left table
     JoinMap theLeftMap;
     Value theKey;
     for (auto& lRow : theLeftRowCollection){
@@ -549,6 +553,7 @@ namespace ECE141 {
 
     // update rows
     for (auto& theRow : theRowCollection) {
+      // update the row data with the update set
       for (auto& theKeyValue : anUpdateSet) {
         theRow->setData(theKeyValue.first, theKeyValue.second);
       }
