@@ -1,0 +1,84 @@
+{
+  "tests": [
+    {
+      "name": "Compile test",
+      "setup": "make",
+      "run": "./pa10 Compile",
+      "input": "",
+      "output": "Compile test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 10
+    },
+    {
+      "name": "DB test",
+      "setup": "make",
+      "run": "./pa10 DBCommands",
+      "input": "",
+      "output": "DBCommands test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 10
+    },
+    {
+      "name": "Insert test",
+      "setup": "make",
+      "run": "./pa10 Insert",
+      "input": "",
+      "output": "Insert test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 10
+    },
+    {
+      "name": "Joins test",
+      "setup": "make",
+      "run": "./pa10 Joins",
+      "input": "",
+      "output": "Joins test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 10
+    },
+    {
+      "name": "Index test",
+      "setup": "make",
+      "run": "./pa10 Index",
+      "input": "",
+      "output": "Index test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 30
+    },
+    {
+      "name": "Tables test",
+      "setup": "make",
+      "run": "./pa10 Tables",
+      "input": "",
+      "output": "Tables test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 10
+    },
+    {
+      "name": "Update test",
+      "setup": "make",
+      "run": "./pa10 Update",
+      "input": "",
+      "output": "Update test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 10
+    },
+    {
+      "name": "Select test",
+      "setup": "make",
+      "run": "./pa10 Select",
+      "input": "",
+      "output": "Select test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 30
+    }
+  ]
+}
