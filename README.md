@@ -1,97 +1,84 @@
-# SP22-Assignment10
-### Due Sunday - June 5, 2022 - 11:30pm 
-
-## Overview -- Adding a Cache for Performance
-
-In this assignment, we are going to add a cache to improve overall system performance. 
-
+# ECE141b -- Spring 2022 Final
+## Altering a table
 <hr>
 
-## Key Classes in This Assignment : `LRUCache`
-
-The main puprose of the `LRUCache` class is to hold a set of data in memory (avoiding disk operations) so that you can improve overall system performance. You'll want to adapt your code slightly to support the cache (for reading and writing). 
-
-We've provided a minimal version of the `LRUCache` class. It's up to you to adapt and implement this code to meet your needs. You can change it any way you like, or replace all of it with your own.
+We've all worked hard this term, to build a working database. Your last task, and an essential ingredient of effective software design, is to deal with change. For this task, you will implement two variations of the `alter table |name| ...` command, which changes an entity, and updates the associated row column(s) in your table. There are two variations that you'll deal with:
 
 ```
-  template<typename KeyT, typename ValueT>
-  class LRUCache {
-  public:
-        
-    //OCF 
-
-    void    put(const KeyT &key, const ValueT& value);
-    ValueT& get(const KeyT& key);    
-    bool    contains(const KeyT& key) const;
-    size_t  size() const; //current size
-    
-  protected:
-    size_t maxsize; //prevent cache from growing past this size...
-
-    //data members here...
-  };
+ALTER TABLE Books ADD  pub_year int;  -- adding a new column
+ALTER TABLE Books DROP subtitle;  -- dropping an existing column
 ```
 
-You should design your `LRUCache` so that can cache `Block` or `Row` objects. For `Block` objects, the cache "key" will likely be the block number, and the value an actual `Block`. For a `Row` cache, you will likely use a primary key (int) for the "key", and a `Row` or `Row*` for the value.
+## Step 1 - Setting up your project
 
-> **NOTE:** The `Config` class has changed slightly in this version, so that we can dynamically enable/disable caching. In order to use it, you must make a one-line change to your `Application.cpp` file. Put this line at the top of the file (inside the namespace specifier).
-
-```
-  bool Config::cacheSize[]={0,0,0};
-```
-
-> **NOTE:** The size of your `LRUCache` memory cache should be obtained at run-time by calling `Config::getCacheSize(CacheType)`. This approach allows our testing system to test performance of your system using different size caches.  Caching should only be enabled for a given `CacheType` (block, row, view) if `Config::getCacheSize(CacheType)` returns a non-zero value. 
-
-<hr>
-
-## Integrating files from assignment #9 with this assignment
-
-To do this assignment, copy your files from PA9 as usual.  Don't overwrite the new versions of:
+As usual, copy all your files from PA-10 (or the most recent working version), into this your final project folder. Be sure not to overwrite the following files:
 
 ```
-Config.hpp
+makefile 
 main.cpp
 TestAutomatic.hpp
-makefile
 ```
 
-<hr>
 
-## Adding Support For the `LRUCache` Class
+## Step 2 - 
 
-We discussed how to build an `LRUCache` in lecture two weeks ago. Please refer to that lecture for more details. Google offers many examples -- but be careful -- because some are very poor.
+### 2A: Create a new "AlterStatement" class to your system
 
-After you have designed and built your `LRUCache` class, you'll integrate into the flow of your logic. However, recall that we only _use_ the cache if the `Config::getCacheSize(CacheType)` returns a non-zero value.  `Config::CacheType` argument may be 'block', 'rows', or 'views'. 
+In order to support the `alter table...` you'll need to create a new class to handle that statement type. Choose whatever name you like. 
 
-### Challenge 1 
+### 2B: Add code to implement the "Alter table" command(s)
 
-In this challenge you'll implement a block cache. We discussed several ways you can implement this in your system. The only hard requirement is that your code must be able to run with the cache enabled or disabled. The testing system will vary this `Config` setting. 
+Handling the `ALTER TABLE` command also requires that you add code to one of your controller classes, typically `Database.hpp`. Call this method when it's time to execute an `AlterTable...` statement.
 
-When enabled, you want to load blocks into your cache, so that they may be retrieve more quickly on a subsequent request. Your caching policy algorithm should be designed to keep "most-recently-used" blocks, and discard the "least recently used". If block requests exceed the capacity of your cache, you may have to discard recently used blocks. 
-
-### Challenge 2 -- Optional
-
-In this challenge, you'll implement a cache for `Row` objects. The template we provided you as a starter for your `LRUCache` can be used for either blocks or rows -- given the correct set of template arguments.  So this challenge involves integrating the cache with your logic for reading/writing `Row` objects. 
-
-### Challenge 3 -- Optional
-
-In this challenge -- you'll add a "view" cache to your system. Since views are text based, you can cache your views on disk, and reuse them (by loading the view output text from disk) if the same query is sent to your database.  You can also use the `LRUCache` to cache views in memory if you prefer.
-
-## Testing This Assignment
-
-As always you can use the auto-grader to help get your code to perform as expected.
+A typical scenario looks like this when a user issues an `ALTER` command. Don't forget to output the "Query OK..." information:
 
 ```
-- Joins Test 10pts
-- Index Test 30pts
-- Block Cache Test 55pts
-- Row Cache Test 15pts
-- View Cache Test 15pts
+ALTER TABLE Books add pub_year varchar(4);  
+Query Ok, 20 rows affected (0.00123 secs)
 ```
 
-## Turning in your work 
 
-Make sure your code compiles, emits ZERO warnings, and meets the requirements given above. 
+## Step 3 - Developing your solution
 
-Submit your work by checking it into git by <b>June 5, 2022 - 11:30pm  </b>. Good luck! 
+An `ALTER TABLE` command is capable of making three types of changes to an entity: 1) ADD column; 2) DROP column; 3) MODIFY existing column. For your final, you are ONLY asked to alter your table using ADD column and DROP column.  Also, you won't be asked to change the primary key for a table, so your indexes will not be affected.
 
+The key to understanding this challenge, is to recognize that the `ALTER TABLE` command actually affects two things. First, it changes the definition of a known `Entity`, by adding or removing a new attribute.  Second, it changes _every_ existing row in the table associated with this `Entity`, and adds a new (empty) value for the newly added attribute or removes an existing value from the row. 
+
+You'll likely be making the following changes to your code:
+
+1. Create a new `AlterStatement` class, as you've done before
+2. Add support for this class in one of your `Processor` classes, as you've done before
+3. Add logic in a controller class (e.g. `Database`) to impelement this command
+4. Add methods to `Entity` to add/remove an `Attribute`
+5. Re-save the `Entity` when it changes
+6. Update all rows associated with the changed `Entity` to add/remove a data column
+
+If you think about this -- you'll see that you have already created many tools that can help.
+
+
+> **DON'T PANIC:** -- if this is overwhelming, just do your best. A working solution is a great result. But if you can't accomplish that, you can still get partial credit. Work methodically, and follow the patterns you've been using throughout the term. Remember that every new command requires that we have a `Statement` (for parsing and state management), and a corresponding method to handle the command in one of the `CmdProcessor` classes (`SQLProcessor`, `DBProcessor`). Work iteratively on this, and make sure to leave comments in your code if you can't finish a task, so we can follow the logic you were trying to implement.
+
+### Changing your `Entity`
+
+To change your entity, load it from storage (or use the one you have in memory if it's already loaded).  Add or remove the specified attribute, and resave the entity to storage, using its original block_number. 
+
+### Changing your rows
+
+**NOTE:** It's very likely you already get most of the code you need to do this work, from the commands you've already implemented. 
+
+For example, you can conveniently get a list of `Rows` by invoking `select * from table`. For each element in your collection, add or remove the given field. Then re-save the `Row` to storage, as if you were doing and `update` to its original block_number.  
+
+## Submitting your final solution
+
+You can resubmit your code to github as often as you like during the final to help with testing. The `TestAutomatic.hpp` file provides a new test called `doAlterTest` for validating your `ALTER TABLE...` commands.
+
+#### Grading 
+```
+Compile test -- 10pts
+AddColumn test -- 45pts (ALTER TABLE statement)
+RemoveColumn test -- 45pts (ALTER TABLE statement)
+``` 
+
+Make sure to update the `AboutMe.cpp` file with your student details. Then commit your changes to github. 
+
+Good luck everyone -- it's been delightful to work with each you this term.

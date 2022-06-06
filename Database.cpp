@@ -245,6 +245,7 @@ namespace ECE141 {
       return StatusResult{Errors::unknownTable};
     }
     Entity* theEntity = getEntity(theTableName);
+    // check the type of alter
     if (alterType==Keywords::add_kw){
       for (auto& att : theAttributes) {
         theEntity->addAttribute(att);
@@ -263,7 +264,13 @@ namespace ECE141 {
     StorageInfo info(theEntity->hashString(), ss.str().size(), theEntityBlockNum, BlockType::entity_block);
     theStorage.save(ss, info);
 
-    anOutput << "Query OK, 0 row affected (" <<  Config::getTimer().elapsed() << " sec)" << std::endl;
+    // get the row size
+    uint32_t theRowsSize = 0;
+    for (auto& index : theIndexList)
+      if (index.getTableName() == theTableName 
+          && index.getFieldName() == theEntity->getPrimaryKey()->getName())
+        theRowsSize = index.getSize();
+    anOutput << "Query OK, "<< theRowsSize << " row affected (" <<  Config::getTimer().elapsed() << " sec)" << std::endl;
     changed = true;
     return StatusResult{noError};
   }

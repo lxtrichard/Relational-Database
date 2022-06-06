@@ -213,7 +213,7 @@ namespace ECE141
             // add
             if (aTokenizer.skipIf(Keywords::add_kw)){
               alterType = Keywords::add_kw;
-              theToken = aTokenizer.current();
+              theToken = aTokenizer.current(); // the column name
               if (theToken.type == TokenType::identifier){
                 Attribute theAttribute(theToken.data, DataTypes::no_type);
                 aTokenizer.next();
@@ -224,14 +224,12 @@ namespace ECE141
             // drop
             else if (aTokenizer.skipIf(Keywords::drop_kw)){
               alterType = Keywords::drop_kw;
-              if (aTokenizer.skipIf(Keywords::column_kw)){
-                theToken = aTokenizer.current();
-                if (theToken.type == TokenType::identifier){
-                  Attribute theAttribute(theToken.data, DataTypes::no_type);
-                  attributes.push_back(theAttribute);
-                  aTokenizer.next();
-                  return theResult;
-                }
+              theToken = aTokenizer.current(); // the column name
+              if (theToken.type == TokenType::identifier){
+                Attribute theAttribute(theToken.data, DataTypes::no_type);
+                attributes.push_back(theAttribute);
+                aTokenizer.next();
+                return theResult;
               }
             }
           }

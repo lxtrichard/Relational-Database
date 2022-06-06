@@ -17,7 +17,7 @@
 #include <numeric>
 
 #include "Application.hpp"
-#include "AboutUs.hpp"
+#include "AboutMe.hpp"
 #include "Errors.hpp"
 #include "Config.hpp"
 #include "FolderReader.hpp"
@@ -124,7 +124,7 @@ namespace ECE141 {
     
     TestAutomatic(std::ostream &anOutput) : output(anOutput) {}
     
-    ~TestAutomatic() {std::cout << "Test Version 1.95\n";}
+    ~TestAutomatic() {std::cout << "Test Version 2.0\n";}
     
     void addUsersTable(std::ostream &anOutput) {
       anOutput << "create table Users (";
@@ -155,18 +155,15 @@ namespace ECE141 {
       anOutput << " id int NOT NULL auto_increment primary key,";
       anOutput << " title varchar(25) NOT NULL,";
       anOutput << " subtitle varchar(25),";
+      anOutput << " isbn varchar(10),";
       anOutput << " user_id int);\n";
     }
     
     bool doCompileTest() {
-      AboutUs theAbout;
-      auto theCount=theAbout.getTeamSize();
-      std::vector<std::string> theNames;
-      for(size_t i=0;i<theCount;i++) {
-        if(auto theName=theAbout.getName(i))
-          theNames.push_back(*theName);
-      }
-      return theNames.size()>0;
+      AboutMe theAbout;
+      if(theAbout.getName()=="") return false;
+      if(theAbout.getPID()=="") return false;
+      return true;
     }
 
     StatusResult doScriptTest(std::istream &anInput, std::ostream &anOutput) {
@@ -222,6 +219,7 @@ namespace ECE141 {
       static KWList dumpDB{Keywords::dump_kw,Keywords::database_kw};
       static KWList dropDB{Keywords::drop_kw,Keywords::database_kw};
       static KWList createTable{Keywords::create_kw,Keywords::table_kw};
+      static KWList alterTable{Keywords::alter_kw,Keywords::table_kw};
       static KWList showTables{Keywords::show_kw,Keywords::tables_kw};
       static KWList showIndex{Keywords::show_kw,Keywords::index_kw};
       static KWList showIndexes{Keywords::show_kw,Keywords::indexes_kw};
@@ -331,6 +329,12 @@ namespace ECE141 {
               theValue=std::stoi(theToken.data);
               aResults.push_back({Commands::delet,theValue});
               theSeq.clear().skipPast(')');
+            }
+          }
+          else if(theSeq.clear().nextIs(alterTable)) {
+            if(theSeq.skipPast(';').nextIs({Keywords::query_kw}).skip(2)) {
+              theSeq.getNumber(theValue).skip(7);
+              aResults.push_back({Commands::alter,theValue});
             }
           }
           else theTokenizer.next(); //skip...
@@ -527,23 +531,23 @@ namespace ECE141 {
   void insertBooks(std::ostream &anOut,
                    size_t anOffset, size_t aLimit) {
     static const char* kBooks[]={
-      " (\"The Green Mile\",4)",
-      " (\"The Stand\",4)",
-      " (\"Misery\",4)",
-      " (\"11/22/63\",4)",
-      " (\"The Institute\",4)",
-      " (\"Sorcerer\",1)",
-      " (\"Wintersmith\",1)",
-      " (\"Mort\",1)",
-      " (\"Thud\",1)",
-      " (\"Time Police\",3)",
-      " (\"The Mechanical\",2)",
-      " (\"The Liberation\",2)",
-      " (\"The Rising\",2)",
-      " (\"Exhalation\",5)",
+      " (\"The Green Mile\",4, \"C123-932L\")",
+      " (\"The Stand\",4, \"RV36-M11B\")",
+      " (\"Misery\",4, \"VI77-21K3\")",
+      " (\"11/22/63\",4, \"PA45-M023\")",
+      " (\"The Institute\",4, \"F94K-916M\")",
+      " (\"Sorcerer\",1, \"E598-B81S\")",
+      " (\"Wintersmith\",1, \"W84S-P70R\")",
+      " (\"Mort\",1, \"KEJ5-27D3\")",
+      " (\"Thud\",1, \"YAL4-J001\")",
+      " (\"Time Police\",3, \"EK50-J001\")",
+      " (\"The Mechanical\",2, \"ULRR-1320\")",
+      " (\"The Liberation\",2, \"ZK95-9413\")",
+      " (\"The Rising\",2, \"ECC7-6BB0\")",
+      " (\"Exhalation\",5, \"18MQ-Q414\")",
     };
     
-    anOut<<"INSERT INTO Books (title, user_id)";
+    anOut<<"INSERT INTO Books (title, user_id, isbn)";
     
     size_t theSize=sizeof(kBooks)/sizeof(char*);
     size_t theLimit=std::min(theSize, anOffset+aLimit);
@@ -1091,7 +1095,101 @@ namespace ECE141 {
     bool doViewCacheTest() {
       return doCacheTest(CacheType::view, 30);
     }
-  };
+    
+    bool doAddColumnTest() {
+      std::stringstream theStream1;
+      theStream1 << "create database finalA;\n";
+      theStream1 << "create database finalB;\n";
+      theStream1 << "use finalA;\n";
+      
+      addBooksTable(theStream1);
+      insertBooks(theStream1,0,14);
+      theStream1 << "describe Books;\n";
+      theStream1 << "ALTER TABLE Books add pub_year int;\n";
+
+      theStream1 << "use finalB;\n";
+      theStream1 << "drop database finalB;\n";
+      theStream1 << "use finalA;\n";
+      theStream1 << "UPDATE Books set pub_year=2022 where id<8;\n";
+      theStream1 << "describe Books;\n";
+      theStream1 << "select * from Books where id<8 order by title;\n";
+      theStream1 << "drop database finalA;\n";
+      theStream1 << "quit;\n";
+      
+      std::stringstream theInput(theStream1.str());
+      std::stringstream theOutput;
+      
+      bool theResult=doScriptTest(theInput,theOutput);
+      if(theResult) {
+        std::string tempStr=theOutput.str();
+        output << "output \n" << tempStr << "\n";
+        //std::cout << tempStr << "\n";
+        
+        Responses theResponses;
+        size_t theCount=analyzeOutput(theOutput,theResponses);
+        Expected theExpected({
+          {Commands::createDB,1},     {Commands::createDB,1},
+          {Commands::useDB,0},        {Commands::createTable,1},
+          {Commands::insert,14},      {Commands::describe,5},
+          {Commands::alter,14},       {Commands::useDB,0},
+          {Commands::dropDB,0},       {Commands::useDB,0},
+          {Commands::update,7},       {Commands::describe,6},
+          {Commands::select,7},       {Commands::dropDB,0},
+        });
+        if(!theCount || !(theExpected==theResponses)) {
+          theResult=false;
+        }
+      }
+      return theResult;
+    }
+    
+    bool doRemoveColumnTest() {
+      std::stringstream theStream1;
+      theStream1 << "create database finalA;\n";
+      theStream1 << "create database finalB;\n";
+      theStream1 << "use finalA;\n";
+      
+      addBooksTable(theStream1);
+      insertBooks(theStream1,0,14);
+      theStream1 << "describe Books;\n";
+      theStream1 << "ALTER TABLE Books drop subtitle;\n";
+
+      theStream1 << "use finalB;\n";
+      theStream1 << "drop database finalB;\n";
+      theStream1 << "use finalA;\n";
+      theStream1 << "describe Books;\n";
+      theStream1 << "select * from Books where id<8 order by title;\n";
+      theStream1 << "drop database finalA;\n";
+      theStream1 << "quit;\n";
+      
+      std::stringstream theInput(theStream1.str());
+      std::stringstream theOutput;
+      
+      bool theResult=doScriptTest(theInput,theOutput);
+      if(theResult) {
+        std::string tempStr=theOutput.str();
+        output << "output \n" << tempStr << "\n";
+        //std::cout << tempStr << "\n";
+        
+        Responses theResponses;
+        size_t theCount=analyzeOutput(theOutput,theResponses);
+        Expected theExpected({
+          {Commands::createDB,1},     {Commands::createDB,1},
+          {Commands::useDB,0},        {Commands::createTable,1},
+          {Commands::insert,14},      {Commands::describe,5},
+          {Commands::alter,14},       {Commands::useDB,0},
+          {Commands::dropDB,0},       {Commands::useDB,0},
+          {Commands::describe,4},     {Commands::select,7},
+          {Commands::dropDB,0},
+        });
+        if(!theCount || !(theExpected==theResponses)) {
+          theResult=false;
+        }
+      }
+      return theResult;
+    }
+    
+  };    
 
 }
 

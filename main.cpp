@@ -27,6 +27,7 @@ int main(int argc, const char * argv[]) {
     using TestCall = std::function<bool()>;
     static std::map<std::string, TestCall> theCalls {
       {"App",         [&](){return theTests.doAppTest();}  },
+      {"AddColumn",   [&](){return theTests.doAddColumnTest();}  },
       {"BlockCache",  [&](){return theTests.doBlockCacheTest();}  },
       {"Compile",     [&](){return theTests.doCompileTest();}  },
       {"Delete",      [&](){return theTests.doDeleteTest();}  },
@@ -36,6 +37,7 @@ int main(int argc, const char * argv[]) {
       {"Insert",      [&](){return theTests.doInsertTest();}  },
       {"Joins",       [&](){return theTests.doJoinTest();}  },
       {"Reader",      [&](){return theTests.doReaderTest();}  },
+      {"RemoveColumn",[&](){return theTests.doRemoveColumnTest();}  },
       {"RowCache",    [&](){return theTests.doRowCacheTest();}  },
       {"Select",      [&](){return theTests.doSelectTest();}  },
       {"Tables",      [&](){return theTests.doTablesTest();}  },
