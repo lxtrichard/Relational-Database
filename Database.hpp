@@ -35,6 +35,7 @@ namespace ECE141 {
     Entity*         getEntity(const std::string &aName);
 
     StatusResult    createTable(std::ostream &anOutput, Entity &anEntity);
+    StatusResult    alterTable(std::ostream &anOutput, std::string theTableName, std::vector<Attribute> theAttributes);
     StatusResult    showTables(std::ostream &anOutput);
     StatusResult    describeTable(std::ostream &anOutput, const std::string &aName);
     StatusResult    dropTable(std::ostream &anOutput, const std::string &aName);

@@ -87,6 +87,8 @@ namespace ECE141
     StatusResult theResult{Errors::noError};
     while (theResult && aTokenizer.more()){
       Token &theToken = aTokenizer.current();
+      if (theToken.data[0] == ';')
+        return theResult;
       if (theToken.type==TokenType::keyword){
         switch (theToken.keyword)
         {
@@ -197,6 +199,38 @@ namespace ECE141
     StatusResult theResult = theDB->createTable(aStream, *theEntity);
     return theResult;
   };
+
+  // ---------------  AlterStatement  -------------------- //
+  StatusResult  AlterStatement::parse(Tokenizer& aTokenizer){
+    StatusResult theResult{Errors::noError};
+    if (aTokenizer.skipIf(Keywords::alter_kw)){
+      if (aTokenizer.skipIf(Keywords::table_kw)){
+        if (aTokenizer.more()){
+          Token &theToken = aTokenizer.current();
+          if (theToken.type == TokenType::identifier){
+            thetableName = theToken.data;
+            aTokenizer.next();
+            if (aTokenizer.skipIf(Keywords::add_kw)){
+              theToken = aTokenizer.current();
+              if (theToken.type == TokenType::identifier){
+                Attribute theAttribute(theToken.data, DataTypes::no_type);
+                aTokenizer.next();
+                theResult = parseAttribute(aTokenizer, theAttribute);
+                return theResult;
+              }
+            }
+          }
+        }
+      }
+    }
+    return StatusResult{Errors::unknownCommand};
+  }
+
+  StatusResult AlterStatement::run(std::ostream &aStream){
+    StatusResult theResult{Errors::noError};
+    theResult = theDB->alterTable(aStream, thetableName, attributes);
+    return theResult;
+  }
 
   // ---------------  ShowStatement  -------------------- //
   StatusResult ShowStatement::parse(Tokenizer &aTokenizer){

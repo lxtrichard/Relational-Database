@@ -63,6 +63,7 @@ namespace ECE141 {
       {Keywords::select_kw,   [&]() { return new SelectStatement(activeDB); }},
       {Keywords::update_kw,   [&]() { return new UpdateStatement(activeDB); }},
       {Keywords::delete_kw,   [&]() { return new DeleteStatement(activeDB); }},
+      {Keywords::alter_kw,     [&]() { return new AlterStatement(activeDB); }},
     };
     if (theStmtFactory.count(theKeyword)) {
       theStatement = theStmtFactory[theKeyword]();

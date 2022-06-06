@@ -33,13 +33,21 @@ namespace ECE141 {
 
   class CreateStatement : public SQLStatement {
   public:
-      CreateStatement(Database* aDB) : SQLStatement(aDB, Keywords::create_kw) {};
+      CreateStatement(Database* aDB, Keywords aKeyWord=Keywords::create_kw) : SQLStatement(aDB, aKeyWord) {};
       ~CreateStatement(){};
       StatusResult  parse(Tokenizer& aTokenizer);
       StatusResult  parseAttributes(Tokenizer& aTokenizer);
       StatusResult  parseAttribute(Tokenizer& aTokenizer, Attribute& anAttribute);
       StatusResult  parseOptions(Tokenizer& aTokenizer, Attribute& anAttribute);
       StatusResult  getVarSize(Tokenizer& aTokenizer, Attribute& anAttribute);
+      StatusResult  run(std::ostream &aStream);
+  };
+
+  class AlterStatement : public CreateStatement {
+  public:
+      AlterStatement(Database* aDB, Keywords aKeyWord=Keywords::alter_kw) : CreateStatement(aDB, aKeyWord) {};
+      ~AlterStatement(){};
+      StatusResult  parse(Tokenizer& aTokenizer);
       StatusResult  run(std::ostream &aStream);
   };
   
