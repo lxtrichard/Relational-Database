@@ -419,6 +419,20 @@ namespace ECE141
     }
     else{
       theQuery->setSelectAll(true);
+      // set exclude
+      if (aTokenizer.skipIf(Keywords::exclude_kw)){
+        aTokenizer.skipIf('(');
+        while (aTokenizer.current().data[0] != ')' 
+                && aTokenizer.current().keyword != Keywords::from_kw){
+          if (aTokenizer.skipIf(','))
+            continue;
+          if (aTokenizer.current().type != TokenType::identifier)
+            return StatusResult{Errors::identifierExpected};
+          theQuery->setExcludes(aTokenizer.current().data);
+          aTokenizer.next();
+        }
+        aTokenizer.skipIf(')');
+      }
       aTokenizer.skipTo(Keywords::from_kw);
     }
 

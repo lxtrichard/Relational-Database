@@ -35,7 +35,7 @@ namespace ECE141 {
     table_kw, tables_kw, true_kw,
     unique_kw, unknown_kw, update_kw, use_kw,
     values_kw, varchar_kw, version_kw, where_kw,
-    default_kw, timestamp_kw
+    default_kw, timestamp_kw, exclude_kw
   };
 
   

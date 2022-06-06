@@ -157,9 +157,10 @@ namespace ECE141 {
     std::make_pair("varchar",   ECE141::Keywords::varchar_kw),
     std::make_pair("version",   ECE141::Keywords::version_kw),
     std::make_pair("where",     ECE141::Keywords::where_kw),
-    std::make_pair("dump",     ECE141::Keywords::dump_kw),
+    std::make_pair("dump",      ECE141::Keywords::dump_kw),
     std::make_pair("default",     ECE141::Keywords::default_kw),
-    std::make_pair("timestamp",     ECE141::Keywords::timestamp_kw),
+    std::make_pair("timestamp",   ECE141::Keywords::timestamp_kw),
+    std::make_pair("exclude",     ECE141::Keywords::exclude_kw),
   };
 
   static std::map<Keywords, DataTypes> gKeywordTypes = {

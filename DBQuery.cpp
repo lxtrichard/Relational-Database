@@ -50,6 +50,11 @@ namespace ECE141
     return *this;
   }
 
+  DBQuery& DBQuery::setExcludes(const std::string &aField){
+    theExcludes.push_back(aField);
+    return *this;
+  }
+
   StatusResult DBQuery::parseFilters(Tokenizer& aTokenizer){
     return theFilters.parse(aTokenizer, *theEntity);
   }

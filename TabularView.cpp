@@ -55,13 +55,23 @@ namespace ECE141{
     return selectList;
   }
 
+  static bool InScope(bool selectAll, StringList& selectList, StringList& excludeList, const std::string& attName) {
+    if (selectAll || std::count(selectList.begin(), selectList.end(), attName)) {
+      if (std::count(excludeList.begin(), excludeList.end(), attName) == 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   TabularView& TabularView::showSeparator(std::shared_ptr<DBQuery>& aQuery){
     bool selectAll = aQuery->getSelectAll();
     StringList selectList = getSelectList(aQuery);
+    StringList excludeList = aQuery->getExcludes();
     output << "+";
 
     for (auto& cur : selectList) {
-      if (selectAll || std::count(selectList.begin(), selectList.end(), cur)) {
+      if (InScope(selectAll, selectList, excludeList, cur)) {
         for (size_t i=0;i<=widths[cur];i++)
           output << "-";
         output << "+";
@@ -74,9 +84,10 @@ namespace ECE141{
   TabularView& TabularView::showHeader(std::shared_ptr<DBQuery>& aQuery) {
     bool selectAll = aQuery->getSelectAll();
     StringList selectList = getSelectList(aQuery);
+    StringList excludeList = aQuery->getExcludes();
 
     for (auto& cur : selectList) {
-      if (selectAll || std::count(selectList.begin(), selectList.end(), cur)) {
+      if (InScope(selectAll, selectList, excludeList, cur)) {
         output << "| ";
         output << std::setw(widths[cur]) << std::left << cur;
       }
@@ -88,11 +99,12 @@ namespace ECE141{
   TabularView& TabularView::showRow(std::shared_ptr<DBQuery>& aQuery, std::unique_ptr<Row>& aRow) {
     bool selectAll = aQuery->getSelectAll();
     StringList selectList = getSelectList(aQuery);
+    StringList excludeList = aQuery->getExcludes();
+    
     KeyValues data = aRow->getData();
 
-
     for (auto& cur : selectList) {
-      if (selectAll || std::count(selectList.begin(), selectList.end(), cur)) {
+      if (InScope(selectAll, selectList, excludeList, cur)) {
         output << "| ";
         output << std::setw(widths[cur]) << std::left;
         if (data.find(cur) == data.end()) {

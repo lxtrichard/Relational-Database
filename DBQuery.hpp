@@ -28,6 +28,7 @@ namespace ECE141
     Entity*     getEntity() { return theEntity; };
     std::string getOrderBy() { return theOrderBy; };
     uint32_t    getLimit() { return theLimit; };
+    StringList  getExcludes() { return theExcludes; }; // return excludes
 
     // setters
     DBQuery& setSelectAll(bool aValue);
@@ -36,6 +37,7 @@ namespace ECE141
     DBQuery& setEntity(Entity *aEntity);
     DBQuery& setOrderBy(const std::string &aField);
     DBQuery& setLimit(uint32_t aLimit);
+    DBQuery& setExcludes(const std::string &aField);
 
     // filters
     StatusResult parseFilters(Tokenizer& aTokenizer);
@@ -49,6 +51,7 @@ namespace ECE141
     std::string theOrderBy;
     Filters     theFilters;
     uint32_t    theLimit;
+    StringList  theExcludes; // excludes
   };
 } // namespace ECE141
 
