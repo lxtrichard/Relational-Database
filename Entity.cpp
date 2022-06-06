@@ -43,6 +43,16 @@ namespace ECE141 {
     }
     return *this;
   }
+  
+  Entity& Entity::removeAttribute(const std::string &aName) {
+    for (auto it = attributes.begin(); it != attributes.end(); it++) {
+      if (it->getName() == aName) {
+        attributes.erase(it);
+        return *this;
+      }
+    }
+    return *this;
+  }
 
   const Attribute* Entity::getAttribute(const std::string &aName) const {
     for (auto& att : attributes) {

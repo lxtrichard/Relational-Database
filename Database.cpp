@@ -238,15 +238,24 @@ namespace ECE141 {
     return StatusResult{noError};
   }
 
-  StatusResult Database::alterTable(std::ostream &anOutput, std::string theTableName, std::vector<Attribute> theAttributes) {
+  StatusResult Database::alterTable(std::ostream &anOutput, std::string theTableName, 
+                                    std::vector<Attribute> theAttributes, Keywords alterType) {
     anOutput << std::setprecision(3) << std::fixed;
     if (theEntityIndexes.find(theTableName) == theEntityIndexes.end()) {
       return StatusResult{Errors::unknownTable};
     }
     Entity* theEntity = getEntity(theTableName);
-    for (auto& att : theAttributes) {
-      theEntity->addAttribute(att);
+    if (alterType==Keywords::add_kw){
+      for (auto& att : theAttributes) {
+        theEntity->addAttribute(att);
+      }
     }
+    else if (alterType==Keywords::drop_kw){
+      for (auto& att : theAttributes) {
+        theEntity->removeAttribute(att.getName());
+      }
+    }
+    
     uint32_t theEntityBlockNum = theEntityIndexes[theTableName];
     // write Entity
     std::stringstream ss;

@@ -45,10 +45,14 @@ namespace ECE141 {
 
   class AlterStatement : public CreateStatement {
   public:
-      AlterStatement(Database* aDB, Keywords aKeyWord=Keywords::alter_kw) : CreateStatement(aDB, aKeyWord) {};
+      AlterStatement(Database* aDB, Keywords aKeyWord=Keywords::alter_kw) 
+          : CreateStatement(aDB, aKeyWord), alterType(Keywords::unknown_kw) {};
       ~AlterStatement(){};
       StatusResult  parse(Tokenizer& aTokenizer);
+      Keywords      getAlterType() {return alterType;};
       StatusResult  run(std::ostream &aStream);
+  protected:
+      Keywords alterType;
   };
   
   class ShowStatement : public SQLStatement {

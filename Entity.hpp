@@ -38,6 +38,7 @@ namespace ECE141 {
         
     const AttributeList&  getAttributes() const {return attributes;}
     Entity&               addAttribute(const Attribute &anAttribute);
+    Entity&               removeAttribute(const std::string &aName);
     const Attribute*      getAttribute(const std::string &aName) const;
     const Attribute*      getPrimaryKey() const;
 

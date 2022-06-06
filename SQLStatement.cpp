@@ -210,7 +210,9 @@ namespace ECE141
           if (theToken.type == TokenType::identifier){
             thetableName = theToken.data;
             aTokenizer.next();
+            // add
             if (aTokenizer.skipIf(Keywords::add_kw)){
+              alterType = Keywords::add_kw;
               theToken = aTokenizer.current();
               if (theToken.type == TokenType::identifier){
                 Attribute theAttribute(theToken.data, DataTypes::no_type);
@@ -219,7 +221,21 @@ namespace ECE141
                 return theResult;
               }
             }
+            // drop
+            else if (aTokenizer.skipIf(Keywords::drop_kw)){
+              alterType = Keywords::drop_kw;
+              if (aTokenizer.skipIf(Keywords::column_kw)){
+                theToken = aTokenizer.current();
+                if (theToken.type == TokenType::identifier){
+                  Attribute theAttribute(theToken.data, DataTypes::no_type);
+                  attributes.push_back(theAttribute);
+                  aTokenizer.next();
+                  return theResult;
+                }
+              }
+            }
           }
+          
         }
       }
     }
@@ -228,7 +244,7 @@ namespace ECE141
 
   StatusResult AlterStatement::run(std::ostream &aStream){
     StatusResult theResult{Errors::noError};
-    theResult = theDB->alterTable(aStream, thetableName, attributes);
+    theResult = theDB->alterTable(aStream, thetableName, attributes, alterType);
     return theResult;
   }
 
