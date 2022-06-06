@@ -126,6 +126,7 @@ namespace ECE141 {
       StatusResult parseOrderBy(Tokenizer& aTokenizer);
       StatusResult parseJoin(Tokenizer& aTokenizer);
       StatusResult parseLimit(Tokenizer& aTokenizer);
+      StatusResult parseExclude(Tokenizer& aTokenizer);
 
       Database     *theDB;
       std::shared_ptr<DBQuery> theQuery;

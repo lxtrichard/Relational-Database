@@ -436,24 +436,27 @@ namespace ECE141
     else{
       theQuery->setSelectAll(true);
       // set exclude
-      if (aTokenizer.skipIf(Keywords::exclude_kw)){
-        aTokenizer.skipIf('(');
-        while (aTokenizer.current().data[0] != ')' 
-                && aTokenizer.current().keyword != Keywords::from_kw){
-          if (aTokenizer.skipIf(','))
-            continue;
-          if (aTokenizer.current().type != TokenType::identifier)
-            return StatusResult{Errors::identifierExpected};
-          theQuery->setExcludes(aTokenizer.current().data);
-          aTokenizer.next();
-        }
-        aTokenizer.skipIf(')');
-      }
+      if (aTokenizer.skipIf(Keywords::exclude_kw))
+        parseExclude(aTokenizer);
       aTokenizer.skipTo(Keywords::from_kw);
     }
-
     return StatusResult{Errors::noError};
   };
+
+  StatusResult SelectStatement::parseExclude(Tokenizer& aTokenizer){
+    aTokenizer.skipIf('(');
+    while (aTokenizer.current().data[0] != ')' 
+            && aTokenizer.current().keyword != Keywords::from_kw){
+      if (aTokenizer.skipIf(','))
+        continue;
+      if (aTokenizer.current().type != TokenType::identifier)
+        return StatusResult{Errors::identifierExpected};
+      theQuery->setExcludes(aTokenizer.current().data);
+      aTokenizer.next();
+    }
+    aTokenizer.skipIf(')');
+    return StatusResult{Errors::noError};
+  }
 
   StatusResult SelectStatement::parseEntity(Tokenizer &aTokenizer){
     aTokenizer.skipIf(Keywords::from_kw);
