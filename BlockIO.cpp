@@ -37,7 +37,9 @@ namespace ECE141 {
 
   //---------------------------------------------------
 
-  BlockIO::BlockIO(std::iostream &aStream) : stream(aStream) {}
+  BlockIO::BlockIO(std::iostream &aStream) : stream(aStream) {
+    cache.setMaxSize(Config::getCacheSize(CacheType::block));
+  }
 
   StatusResult write(std::iostream &aStream, Block &aBlock) {
     aStream.write((char*)(&aBlock), sizeof(aBlock));
@@ -59,9 +61,21 @@ namespace ECE141 {
   }
 
   StatusResult BlockIO::readBlock(uint32_t aBlockNumber, Block &aBlock) {
-    int thePos = aBlockNumber * kBlockSize;
-    stream.seekp(thePos,stream.beg);
-    read(stream, aBlock);   
+    // try get from block cache
+    if (Config::useCache(CacheType::block)) {
+      if (cache.contains(aBlockNumber)) {
+        aBlock = cache.get(aBlockNumber);
+      }
+      int thePos = aBlockNumber * kBlockSize;
+      stream.seekp(thePos,stream.beg);
+      read(stream, aBlock);   
+      cache.put(aBlockNumber, aBlock);
+    }
+    else {
+      int thePos = aBlockNumber * kBlockSize;
+      stream.seekp(thePos,stream.beg);
+      read(stream, aBlock);   
+    }   
     return StatusResult{Errors::noError};
   }
 

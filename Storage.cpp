@@ -58,7 +58,7 @@ namespace ECE141 {
 
   StatusResult Storage::releaseBlocks(uint32_t aBlockNum) {
     Block theBlock;
-    Block freeBlock;
+    Block freeBlock(BlockType::free_block);
     bool more = true;
     while (more){
       readBlock(aBlockNum, theBlock);
@@ -91,8 +91,11 @@ namespace ECE141 {
       theBlock.header.pos = pos;
       theBlock.header.count = blockCount;
       theBlock.header.id = anInfo.id;
-      theBlock.header.next = availBlocks.size() > 0 ? *availBlocks.begin() : getBlockCount();
+      theBlock.header.next = availBlocks.size() > 0 ? *availBlocks.begin() : getBlockCount() + 1;
       theBlock.header.size = aStreamSize >= kPayloadSize ? kPayloadSize : aStreamSize;
+
+      if (availBlocks.count(theBlock.header.next) > 0)
+        availBlocks.erase(theBlock.header.next);
 
       if (pos + 1 == blockCount){
         availBlocks.insert(theBlock.header.next);

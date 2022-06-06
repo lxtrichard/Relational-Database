@@ -1,121 +1,97 @@
-# SP22-Assignment9
-Adding index support to improve performance
+# SP22-Assignment10
+### Due Sunday - June 5, 2022 - 11:30pm 
 
-### Due Tuesday - May 31, 2022 - 11:30pm 
+## Overview -- Adding a Cache for Performance
 
-Building an index to improve performance
-
-## Overview -- Working with an Index
-
-In this assignment, we are going to add a primary-key index to tables that we create.  We will update the index as we add/update/delete rows in the table. And we will make our index persistent, so it's available whenever we open a `Database` to work with data rows.
+In this assignment, we are going to add a cache to improve overall system performance. 
 
 <hr>
 
-## Key Classes in This Assignment 
+## Key Classes in This Assignment : `LRUCache`
 
-You'll discover that the following classes are significant in this assignment:
+The main puprose of the `LRUCache` class is to hold a set of data in memory (avoiding disk operations) so that you can improve overall system performance. You'll want to adapt your code slightly to support the cache (for reading and writing). 
 
-### The `Index` class
-
-We've provide a basic version for your `Index` class. It's up to you to adapt this code to meet your needs. You can change it any way you like, or replace all of it with your own.
-
-The main job of the `Index` class is to hold a set of key/value pairs that map a field (in every row of a table) with the blocknumber where that row was located in your `Storage` DB file. Therefore, inserting, deleting, and finding block number (values) based on a field (key) are essential methods.  We provided a basic set of methods for this purpose. 
+We've provided a minimal version of the `LRUCache` class. It's up to you to adapt and implement this code to meet your needs. You can change it any way you like, or replace all of it with your own.
 
 ```
-- addkey/value
-- find key/value
-- remove key/value
-- getvalue(key)
-- bool contains(key)
+  template<typename KeyT, typename ValueT>
+  class LRUCache {
+  public:
+        
+    //OCF 
+
+    void    put(const KeyT &key, const ValueT& value);
+    ValueT& get(const KeyT& key);    
+    bool    contains(const KeyT& key) const;
+    size_t  size() const; //current size
+    
+  protected:
+    size_t maxsize; //prevent cache from growing past this size...
+
+    //data members here...
+  };
 ```
 
-In the version we provide, the `Index` class is `Storable` so it can be saved to storage with a stream interface. You don't have to use that approach, for example, if you prefer to insert your index data into storage using some other method.
+You should design your `LRUCache` so that can cache `Block` or `Row` objects. For `Block` objects, the cache "key" will likely be the block number, and the value an actual `Block`. For a `Row` cache, you will likely use a primary key (int) for the "key", and a `Row` or `Row*` for the value.
 
-We provided an iteration method, `Index::each(BlockVisitor)`, to visit blocks assocated with data rows in the index. This should make it easier to integrate the use of the index into your logic where you process a "select" query. 
+> **NOTE:** The `Config` class has changed slightly in this version, so that we can dynamically enable/disable caching. In order to use it, you must make a one-line change to your `Application.cpp` file. Put this line at the top of the file (inside the namespace specifier).
 
-When you call the `Index.each()` method, it will call your visitor object one time for each value in the index. This will allow you to read/search/use associated rows without having to scan every block in a `Storage` DB file.  We've also provided an `eachKV()` method, which lets you iterate all the key/value pairs (key,blocknum) in a given index. This method makes it easy to implement a "show index..." statement later.
+```
+  bool Config::cacheSize[]={0,0,0};
+```
+
+> **NOTE:** The size of your `LRUCache` memory cache should be obtained at run-time by calling `Config::getCacheSize(CacheType)`. This approach allows our testing system to test performance of your system using different size caches.  Caching should only be enabled for a given `CacheType` (block, row, view) if `Config::getCacheSize(CacheType)` returns a non-zero value. 
 
 <hr>
 
-## Integrating files from assignment #8 with this assignment
+## Integrating files from assignment #9 with this assignment
 
-To do this assignment, copy your files from PA8 as usual.  Don't overwrite the new versions of the `main.cpp`, `TestAutomatic.hpp`, or `makefile` files.
+To do this assignment, copy your files from PA9 as usual.  Don't overwrite the new versions of:
+
+```
+Config.hpp
+main.cpp
+TestAutomatic.hpp
+makefile
+```
 
 <hr>
 
-## Adding Support For the `Index` Class
+## Adding Support For the `LRUCache` Class
 
-Your system will interact with `Index` classes in the following circumstances:
+We discussed how to build an `LRUCache` in lecture two weeks ago. Please refer to that lecture for more details. Google offers many examples -- but be careful -- because some are very poor.
 
-### `CREATE` Table
+After you have designed and built your `LRUCache` class, you'll integrate into the flow of your logic. However, recall that we only _use_ the cache if the `Config::getCacheSize(CacheType)` returns a non-zero value.  `Config::CacheType` argument may be 'block', 'rows', or 'views'. 
 
-When you `CREATE` a table, you will automatically create an index associated for the primary key of the table. The value of every index is the block number of the row associated with the primary key.
+### Challenge 1 
 
-### `DROP` Table
+In this challenge you'll implement a block cache. We discussed several ways you can implement this in your system. The only hard requirement is that your code must be able to run with the cache enabled or disabled. The testing system will vary this `Config` setting. 
 
-When you `DROP` a table, you will automatically delete all the associated indexes, as well as the associated data rows and Entity.
+When enabled, you want to load blocks into your cache, so that they may be retrieve more quickly on a subsequent request. Your caching policy algorithm should be designed to keep "most-recently-used" blocks, and discard the "least recently used". If block requests exceed the capacity of your cache, you may have to discard recently used blocks. 
 
-### `INSERT` Rows
+### Challenge 2 -- Optional
 
-When you `INSERT` rows, you will add an entry (primary key) from the row into the associated table index.
+In this challenge, you'll implement a cache for `Row` objects. The template we provided you as a starter for your `LRUCache` can be used for either blocks or rows -- given the correct set of template arguments.  So this challenge involves integrating the cache with your logic for reading/writing `Row` objects. 
 
-### `SELECT` Rows
+### Challenge 3 -- Optional
 
-When you 'SELECT" rows, you try to locate the associated rows by searching your indexes. This is naturally dependent on the nature of the query, and whether an appropriate index is available.  Remember -- in the worst case (where no index exists matches the conditions specified in your `WHERE` clause) -- you can always use the primary key index to load records for your table, rather than scanning all block in a storage file.
-
-### `DELETE` Rows
-
-Before you delete the associated rows, make sure to remove the prmary key (field) for each row from the index.
-
-## Implement the `SHOW INDEXES` Command
-
-The next step in this assignment is to add support for the `SHOW INDEXES` command, which shows all the indexes defined for a given database:
-
-```
-> show indexes
-+-----------------+-----------------+
-| table           | field(s)        | 
-+-----------------+-----------------+
-| users           | id              |  
-+-----------------+-----------------+
-1 rows in set (nnnn secs)
-```
-
-## Implement the `SHOW INDEX {field1,...} FROM {tablename}` Command
-
-The last step in this assignment is to add support for the `SHOW INDEX` command, that shows all the key/value pairs found in an index (shown below). For now, you just have to be able to retrieve the values for the primary key (id). 
-
-```
-> SHOW index id FROM Users; 
-+-----------------+-----------------+
-| key             | block#          | 
-+-----------------+-----------------+
-| 1               | 35              |  
-+-----------------+-----------------+
-| 2               | 36              |  
-+-----------------+-----------------+
-| 3               | 47              |  
-+-----------------+-----------------+
-3 rows in set (nnnn secs)
-```
-
-> NOTE:  In the example above, we cite the `id` field, which is found in our index for the primary key. The field(s) we name in the field list {field1,...} must match the fields stored in the key of the index. 
+In this challenge -- you'll add a "view" cache to your system. Since views are text based, you can cache your views on disk, and reuse them (by loading the view output text from disk) if the same query is sent to your database.  You can also use the `LRUCache` to cache views in memory if you prefer.
 
 ## Testing This Assignment
 
 As always you can use the auto-grader to help get your code to perform as expected.
 
 ```
-- Insert Test 8pts
-- Delete Test 8pts
-- Select Test 8pts
-- Drop table 8pts
-- Joins Test 8pts
-- Index Test 60pts
+- Joins Test 10pts
+- Index Test 30pts
+- Block Cache Test 55pts
+- Row Cache Test 15pts
+- View Cache Test 15pts
 ```
 
 ## Turning in your work 
 
-Make sure your code compiles, and meets the requirements given above. 
+Make sure your code compiles, emits ZERO warnings, and meets the requirements given above. 
 
-Submit your work by checking it into git by <b>Tuesday - May 31, 2022 - 11:30pm  </b>. Good luck! 
+Submit your work by checking it into git by <b>June 5, 2022 - 11:30pm  </b>. Good luck! 
+

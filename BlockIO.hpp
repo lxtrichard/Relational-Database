@@ -15,7 +15,7 @@
 #include <fstream>
 #include <map>
 #include "Errors.hpp"
-
+#include "LRUCache.hpp"
 
 namespace ECE141 {
   enum class BlockType {
@@ -90,6 +90,7 @@ namespace ECE141 {
 
   protected:
     std::iostream &stream;
+    LRUCache<uint32_t, Block> cache;
   };
 
 }

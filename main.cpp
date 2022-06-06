@@ -17,10 +17,6 @@
 #include "TestManually.hpp"
 #include "TestAutomatic.hpp"
 
-void doSomething() {
-  std::cout << "do something\n";
-}
-
 int main(int argc, const char * argv[]) {
   srand(static_cast<uint32_t>(time(0)));
   if(argc>1) {
@@ -31,17 +27,20 @@ int main(int argc, const char * argv[]) {
     using TestCall = std::function<bool()>;
     static std::map<std::string, TestCall> theCalls {
       {"App",         [&](){return theTests.doAppTest();}  },
+      {"BlockCache",  [&](){return theTests.doBlockCacheTest();}  },
       {"Compile",     [&](){return theTests.doCompileTest();}  },
-      {"Reader",      [&](){return theTests.doReaderTest();}  },
+      {"Delete",      [&](){return theTests.doDeleteTest();}  },
+      {"DropTable",   [&](){return theTests.doDropTest();}  },
       {"DBCommands",  [&](){return theTests.doDBCommandsTest();}  },
-      {"Tables",      [&](){return theTests.doTablesTest();}  },
       {"Index",       [&](){return theTests.doIndexTest();}},
       {"Insert",      [&](){return theTests.doInsertTest();}  },
       {"Joins",       [&](){return theTests.doJoinTest();}  },
+      {"Reader",      [&](){return theTests.doReaderTest();}  },
+      {"RowCache",    [&](){return theTests.doRowCacheTest();}  },
       {"Select",      [&](){return theTests.doSelectTest();}  },
+      {"Tables",      [&](){return theTests.doTablesTest();}  },
       {"Update",      [&](){return theTests.doUpdateTest();}  },
-      {"Delete",      [&](){return theTests.doDeleteTest();}  },
-      {"Drop",        [&](){return theTests.doDropTest();}  },
+      {"ViewCache",   [&](){return theTests.doViewCacheTest();}  },
     };
     
     std::string theCmd(argv[1]);
@@ -59,3 +58,4 @@ int main(int argc, const char * argv[]) {
   }
   return 0;
 }
+

@@ -130,8 +130,10 @@ namespace ECE141 {
   }
 
   // remove Indexes
-  void Database::deleteIndexes(KeyValues& aKeyValue){
+  void Database::deleteIndexes(KeyValues& aKeyValue, std::string aTableName){
     for (auto& index : theIndexList){
+      if (index.getTableName()!=aTableName)
+        continue;
       std::string theField = index.getFieldName();
       if (index.getType() == IndexType::intKey) {
         uint32_t theKey = std::get<int>(aKeyValue[theField]);
@@ -531,7 +533,7 @@ namespace ECE141 {
 
     // delete rows
     for (auto& theRow : theRowCollection) {
-      deleteIndexes(theRow->getData()); // delete indexes
+      deleteIndexes(theRow->getData(), aQuery->getEntityName()); // delete indexes
       theStorage.releaseBlocks(theRow->getBlockNumber());
     }
     

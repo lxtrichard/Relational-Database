@@ -19,6 +19,7 @@
 #include "TabularView.hpp"
 #include "Joins.hpp"
 #include "Index.hpp"
+#include "LRUCache.hpp"
 
 namespace ECE141 {
 
@@ -38,9 +39,9 @@ namespace ECE141 {
     StatusResult    describeTable(std::ostream &anOutput, const std::string &aName);
     StatusResult    dropTable(std::ostream &anOutput, const std::string &aName);
     StatusResult    insertRows(std::ostream &anOutput, 
-                      const std::string &aName,
-                      const std::vector<std::string> anAttributeNames, 
-                      const std::vector<std::vector<std::string>>& aValues);
+                              const std::string &aName,
+                              const std::vector<std::string> anAttributeNames, 
+                              const std::vector<std::vector<std::string>>& aValues);
     StatusResult    selectRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery);
     StatusResult    selectJoins(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery, JoinList& aJoins);
     StatusResult    updateRows(std::ostream &anOutput, std::shared_ptr<DBQuery> aQuery, KeyValues &anUpdateSet);
@@ -49,7 +50,7 @@ namespace ECE141 {
     IndexPairs      getIndex(const std::string &aName, std::vector<std::string> aFields);
     IndexPairs      getAllIndex();
     void            insertIndexes(std::vector<Index*> anIndexes, KeyValues& aKeyValue, uint32_t blockNum);
-    void            deleteIndexes(KeyValues& aKeyValue);
+    void            deleteIndexes(KeyValues& aKeyValue, std::string aTableName);
     void            deleteAllIndexes(std::string aTableName);
     StatusResult    showIndexes(std::ostream &anOutput);
     StatusResult    showIndex(std::ostream &anOutput, std::string aTableName, std::string aFieldName);

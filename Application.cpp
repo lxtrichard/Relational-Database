@@ -15,6 +15,8 @@
 
 namespace ECE141 {
   
+  size_t Config::cacheSize[] = { 0, 0, 0 };
+
   Application::Application(std::ostream &anOutput)
     : CmdProcessor(anOutput), theDBProcessor(anOutput), theSQLProcessor(anOutput) {
   }

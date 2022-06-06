@@ -52,6 +52,7 @@ namespace ECE141 {
       return nullptr;
     }
     Keywords theKeyword = aTokenizer.current().keyword;
+    theStatement = nullptr;
     // Define a factory of Statement objects
     std::map<Keywords, std::function<Statement* ()>> theStmtFactory{
       {Keywords::create_kw,   [&]() { return new CreateStatement(activeDB);}},            

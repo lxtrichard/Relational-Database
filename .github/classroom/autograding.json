@@ -1,64 +1,54 @@
 {
   "tests": [
     {
-      "name": "Insert test",
-      "setup": "make",
-      "run": "./pa9 Insert",
-      "input": "",
-      "output": "Insert test PASS",
-      "comparison": "included",
-      "timeout": 5,
-      "points": 8
-    },
-    {
-      "name": "Delete test",
-      "setup": "make",
-      "run": "./pa9 Delete",
-      "input": "",
-      "output": "Delete test PASS",
-      "comparison": "included",
-      "timeout": 5,
-      "points": 8
-    },
-    {
-      "name": "Select test",
-      "setup": "make",
-      "run": "./pa9 Select",
-      "input": "",
-      "output": "Select test PASS",
-      "comparison": "included",
-      "timeout": 5,
-      "points": 8
-    },
-    {
-      "name": "Drop test",
-      "setup": "make",
-      "run": "./pa9 Drop",
-      "input": "",
-      "output": "Drop test PASS",
-      "comparison": "included",
-      "timeout": 5,
-      "points": 8
-    },
-    {
       "name": "Joins test",
       "setup": "make",
-      "run": "./pa9 Joins",
+      "run": "./pa10 Joins",
       "input": "",
       "output": "Joins test PASS",
       "comparison": "included",
       "timeout": 5,
-      "points": 8
+      "points": 10
     },
     {
       "name": "Index test",
       "setup": "make",
-      "run": "./pa9 Index",
+      "run": "./pa10 Index",
       "input": "",
       "output": "Index test PASS",
       "comparison": "included",
       "timeout": 5,
-      "points": 60
+      "points": 30
+    },
+    {
+      "name": "Block Cache test",
+      "setup": "make",
+      "run": "./pa10 BlockCache",
+      "input": "",
+      "output": "BlockCache test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 50
+    },
+    {
+      "name": "Row cache test",
+      "setup": "make",
+      "run": "./pa10 RowCache",
+      "input": "",
+      "output": "RowCache test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 15
+    },
+    {
+      "name": "ViewCache test",
+      "setup": "make",
+      "run": "./pa10 ViewCache",
+      "input": "",
+      "output": "ViewCache test PASS",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 15
     }
   ]
 }
