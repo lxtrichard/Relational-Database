@@ -372,10 +372,18 @@ namespace ECE141 {
                 const std::vector<std::string> anAttributeNames, 
                 const std::vector<std::vector<std::string>>& aValues){
     anOutput << std::setprecision(3) << std::fixed;
+
+    // check if the table exists
     Entity* theTable = getEntity(aName);
-    if (!theTable) {
+    if (!theTable)
       return StatusResult{Errors::unknownTable};
+
+    // check if the attributes are valid
+    for (auto& attName : anAttributeNames) {
+      if (theTable->getAttribute(attName) == nullptr)
+        return StatusResult{Errors::unknownAttribute};
     }
+
     std::vector<KeyValues> theKeyValueList(aValues.size());
     buildKeyValueList(theKeyValueList, theTable, anAttributeNames, aValues);
     int RowAffected = 0;

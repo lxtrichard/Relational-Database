@@ -55,6 +55,7 @@ namespace ECE141{
     return selectList;
   }
 
+  // check if the attribute is in the select list
   static bool InScope(bool selectAll, StringList& selectList, StringList& excludeList, const std::string& attName) {
     if (selectAll || std::count(selectList.begin(), selectList.end(), attName)) {
       if (std::count(excludeList.begin(), excludeList.end(), attName) == 0) {

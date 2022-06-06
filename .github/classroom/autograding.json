@@ -48,7 +48,7 @@
       "output": "Index test PASS",
       "comparison": "included",
       "timeout": 5,
-      "points": 30
+      "points": 10
     },
     {
       "name": "Tables test",
